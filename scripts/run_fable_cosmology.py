@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +33,9 @@ import fable_spinor as fs
 ARTIFACT_DIR = Path("artifacts/fable")
 FIGURE_DIR = ARTIFACT_DIR / "figures"
 
+#: Pinned so regenerated PDF figures are byte-identical between runs.
+RELEASE_DATETIME = datetime(2026, 9, 17, tzinfo=timezone.utc)
+
 #: scipy and the Rust reference must agree to this mixed absolute/relative
 #: tolerance, |a - b| / (1 + |b|).
 MAX_CROSS_CHECK = 1.0e-10
@@ -44,13 +48,16 @@ MAX_BENCHMARK = 1.0e-12
 
 
 def _save(figure: plt.Figure, stem: str) -> None:
-    (REPOSITORY_ROOT / FIGURE_DIR).mkdir(parents=True, exist_ok=True)
-    for suffix in ("png", "pdf"):
-        figure.savefig(
-            REPOSITORY_ROOT / FIGURE_DIR / f"{stem}.{suffix}",
-            dpi=160,
-            bbox_inches="tight",
-        )
+    target = REPOSITORY_ROOT / FIGURE_DIR
+    target.mkdir(parents=True, exist_ok=True)
+    figure.savefig(target / f"{stem}.png", dpi=160, bbox_inches="tight")
+    # A pinned timestamp is what makes the PDF byte-reproducible.
+    figure.savefig(
+        target / f"{stem}.pdf",
+        dpi=160,
+        bbox_inches="tight",
+        metadata={"CreationDate": RELEASE_DATETIME, "ModDate": RELEASE_DATETIME},
+    )
     plt.close(figure)
 
 

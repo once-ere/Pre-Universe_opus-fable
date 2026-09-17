@@ -12,6 +12,7 @@ mkdir -p build
 reports=(
   gpt5_6_cosmology
   gpt5_6_dark_sector_relationships
+  fable_spinor
 )
 
 for report in "${reports[@]}"; do

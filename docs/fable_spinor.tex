@@ -1,0 +1,436 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!45!black,
+  citecolor=blue!45!black,
+  urlcolor=blue!55!black,
+  pdftitle={fableSpinor and the gpt-5.6 bridge},
+  pdfauthor={Reproducible computational report}
+}
+\graphicspath{{artifacts/fable/figures/}}
+
+\newcommand{\fableSpinor}{\ensuremath{\Psi_{\mathrm{fable}}}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\Pin}{\mathrm{Pin}}
+\newcommand{\Spin}{\mathrm{Spin}}
+
+\title{\texorpdfstring{\fableSpinor}{fableSpinor} and the gpt-5.6 Bridge\\
+\large A real $\Pin(4,4)$-irreducible spinor, a connection that a spinor cannot
+ignore, and a unified dark sector}
+\author{Reproducible computational report}
+\date{17 September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We define \fableSpinor{} as a \emph{real} $16$-component field carrying an
+irreducible representation of the universal cover of the \emph{real} $O(4,4)$,
+and we prove that irreducibility by computing a commutant rather than asserting
+it: the commutant of $\Pin(4,4)$ has dimension $1$, while that of the connected
+$\Spin(4,4)$ has dimension $2$. The distinction is not cosmetic --- under the
+connected group alone the representation splits as $8\oplus8$, so the full
+$O(4,4)$, reflections included, is what makes the sixteen components one object.
+We construct the frame field \texttt{gpt-5.6f\_rame} from a normalised order-four
+Hadamard generator, whose square is the identity so that the group element is
+available in closed form, and the connection family \texttt{gpt-5.6\_bridge}
+whose interpolation parameter is promoted from a constant to a scalar
+\emph{field}. Two exact transgression identities follow, one of which carries a
+gradient term that no constant parameter can produce. We then show that the
+whole family contributes a single scalar one-form to the Dirac operator, and
+that this one-form is removable by a spinor rescaling exactly when an
+obstruction two-form vanishes: it vanishes for the Levi-Civita connection, for
+the Weitzenb\"ock connection and for every constant interpolation between them,
+and it does \emph{not} vanish for a bridge field varying transverse to the
+torsion potential. Finally we derive the background cosmology of \fableSpinor{},
+integrate it three independent ways that agree to $3.6\times10^{-11}$, and find
+a single field that is pressureless at early times and dark-energy-like today,
+whose massless torsion-free limit has a flat, non-evolving equation of state
+$w=n-1$, exactly $-0.764$ at $n=0.236$.
+\end{abstract}
+
+\tableofcontents
+
+\section{The canonical 4+4 bridge}
+
+\subsection{Frame field}
+
+Let $x^0,\dots,x^7$ be coordinates and let the tangent metric be
+\begin{equation}
+  \eta_{ab} = \operatorname{diag}(1,1,1,1,-1,-1,-1,-1).
+\end{equation}
+The canonical frame field is diagonal,
+\begin{equation}
+  e_\mu{}^a = \operatorname{diag}\!\left(
+  \tan 6Hx^0,\; q,\;q,\;q,\;1,\;p,\;p,\;p\right),
+  \qquad
+  q = \frac{e^{-a_4(Hx^4)}}{\sin^{1/6} 6Hx^0},
+  \quad
+  p = \frac{e^{+a_4(Hx^4)}}{\sin^{1/6} 6Hx^0},
+\end{equation}
+with $a_4$ a free function, and it satisfies the defining relation
+\begin{equation}
+  g_{\mu\nu} = e_\mu{}^a\,\eta_{ab}\,e_\nu{}^b .
+\end{equation}
+Note $pq=\sin^{-1/3}6Hx^0$: the two four-blocks carry independent scale factors
+subject to one constraint. The metric determinant is $\sec^2 6Hx^0$.
+
+\subsection{Spin connection}
+
+Solving the vielbein postulate
+\begin{equation}
+  \partial_\mu e_\nu{}^a - \Gamma^\rho_{\mu\nu}e_\rho{}^a
+  + \omega_\mu{}^a{}_b\,e_\nu{}^b = 0
+  \label{eq:postulate}
+\end{equation}
+with $\Gamma$ the Levi-Civita connection gives
+\begin{equation}
+  \omega_\mu{}^a{}_b
+  = e_\nu{}^a\Gamma^\nu_{\mu\rho}\,e^\rho{}_b
+  - e_\nu{}^a\,\partial_\mu e^\nu{}_b .
+\end{equation}
+There are $37$ nonzero Christoffel symbols out of $512$ and $24$ nonzero
+spin-connection components out of $512$. The connection is antisymmetric in its
+flat pair, metric compatible, and torsion free; the postulate residual is
+identically zero.
+
+\subsection{Spinor covariant derivative}
+
+With real $16\times16$ Dirac matrices $\gamma^a$ obeying
+$\tfrac12\{\gamma^a,\gamma^b\}=\eta^{ab}\mathbb{1}$,
+\begin{equation}
+  D_\mu\psi = \partial_\mu\psi
+  + \tfrac18\,\omega_{\mu ab}\,[\gamma^a,\gamma^b]\,\psi
+  = \partial_\mu\psi + \tfrac12\,\omega_{\mu ab}S^{ab}\psi ,
+  \qquad S^{ab}=\tfrac14[\gamma^a,\gamma^b].
+\end{equation}
+Because each $\gamma^a$ is block off-diagonal in the parity grading, every
+commutator $[\gamma^a,\gamma^b]$ is block diagonal, so the derivative preserves
+the eight-dimensional type-one block.
+
+\section{The gpt-5.6 bridge}
+
+\subsection{gpt-5.6f\_rame}
+
+Let $R$ be the normalised order-four Hadamard matrix, $RR^{\mathsf T}=\mathbb{1}_4$, and
+\begin{equation}
+  J = \begin{pmatrix}0&R\\ R^{\mathsf T}&0\end{pmatrix},
+  \qquad
+  J^{\mathsf T}\eta+\eta J = 0,
+  \qquad
+  J^2 = \mathbb{1}_8 .
+\end{equation}
+The first identity places $J$ in $\mathfrak{so}(4,4)$; the second means the
+group element needs no series,
+\begin{equation}
+  \Lambda(u) = \cosh u\,\mathbb{1} + \sinh u\,J,
+  \qquad
+  \Lambda^{\mathsf T}\eta\,\Lambda = \eta .
+\end{equation}
+This is a simultaneous equal-rapidity boost in all four orthogonal $(+,-)$
+planes. The frame
+\begin{equation}
+  \texttt{gpt-5.6f\_rame} = e\cdot\Lambda(u)
+\end{equation}
+reconstructs the same curved metric for every $u$, reduces to the canonical
+frame at $u=0$, and unlike the diagonal canonical frame is dense: it mixes the
+$+4$ and $-4$ blocks.
+
+\subsection{gpt-5.6\_bridge}
+
+Let $K=\Gamma_{\mathrm W}-\Gamma_{\mathrm{LC}}$ be the difference between the
+Weitzenb\"ock and Levi-Civita affine connections. A difference of connections is
+a tensor, so for any scalar $h$
+\begin{equation}
+  \Gamma(h) = \Gamma_{\mathrm{LC}} + h\,K
+\end{equation}
+is a connection, and with $h(s)=3s^2-2s^3$ the endpoints are exact: $h=0$ is
+Levi-Civita and $h=1$ is Weitzenb\"ock.
+
+Nothing in that argument required $h$ to be constant. Promote it to a scalar
+field $h(s(x))$; the product is still a tensor, so the object is still a
+metric-compatible $\mathfrak{so}(4,4)$ connection, and in the canonical frame
+\begin{equation}
+  \omega_{\mathrm{bridge}} = \bigl(1-h(s(x))\bigr)\,\omega_{\mathrm{canonical}} .
+\end{equation}
+
+\subsection{Two exact transgression identities}
+
+\begin{align}
+  T &= h\,T_{\mathrm{Weitzenb\ddot{o}ck}},
+  \label{eq:torsion}\\
+  R &= R_{\mathrm{LC}} + h\,D_{\mathrm{LC}}K + h^2\,K\wedge K
+      + \dd h\wedge K .
+  \label{eq:curvature}
+\end{align}
+Equation~\eqref{eq:torsion} holds for constants too. The last term of
+\eqref{eq:curvature} is new: it is identically zero for every constant
+parameter, so no member of the constant-parameter family reproduces it.
+
+\subsection{A criterion that fails, and one that works}
+
+It is tempting to seek superiority in the \emph{axial} torsion, the totally
+antisymmetric part. That fails, and we record the failure rather than omit it:
+since the bridge torsion is a scalar multiple of the Weitzenb\"ock torsion by
+\eqref{eq:torsion}, and the Weitzenb\"ock axial part vanishes identically, so
+does the bridge's. Both statements are assertions in the test suite so that the
+negative result cannot be quietly forgotten.
+
+The criterion that does work concerns \emph{removability}. Writing the torsion
+potential $\mathcal T=\log\sin 6Hx^0$, the entire family contributes one scalar
+one-form to the Dirac operator,
+\begin{equation}
+  \gamma^\mu\Gamma^{\mathrm{spin}}_\mu
+  = -\tfrac12(1-h)\,\partial_\mu\mathcal T\,\gamma^\mu .
+\end{equation}
+A term of this shape is absorbed by a rescaling $\psi\to e^{-F}\psi$ if and only
+if the one-form is exact, that is, if and only if the obstruction two-form
+vanishes:
+\begin{equation}
+  \Omega = \dd\bigl[(1-h)\,\dd\mathcal T\bigr]
+         = \tfrac12\,\dd h\wedge\dd\mathcal T .
+\end{equation}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lcc}
+\toprule
+connection & $\Omega$ & consequence \\
+\midrule
+canonical Levi-Civita, $h=0$ & $0$ & removable by a rescaling \\
+Weitzenb\"ock, $h=1$ & $0$ & the connection vanishes outright \\
+any constant bridge parameter & $0$ & removable by a rescaling \\
+\textbf{bridge field, $\partial h \not\parallel \partial\mathcal T$} & $\neq0$ & \textbf{irremovable} \\
+\bottomrule
+\end{tabular}
+\caption{The measurable sense in which \texttt{gpt-5.6\_bridge} is superior: it
+is the only entry a spinor cannot be redefined to ignore.}
+\end{table}
+
+Since $\mathcal T$ depends on $x^0$ alone, any bridge field with
+$\partial_4h\neq0$ gives a nonzero obstruction. For $s=\tfrac12+\tfrac14\tanh x^4$,
+\begin{equation}
+  \Omega_{x^0x^4}
+  = \frac{9H\cot(6Hx^0)\operatorname{sech}^2(x^4)\bigl(\tanh^2(x^4)-4\bigr)}{32}
+  \;\neq\;0 .
+\end{equation}
+
+\section{\texorpdfstring{\fableSpinor}{fableSpinor}}
+
+\subsection{Definition and irreducibility}
+
+\fableSpinor{} is a real $16$-component field. The generators of
+$\mathrm{Cl}(4,4)$ are raising and lowering operators on the exterior algebra of
+$\mathbb{R}^4$; four square to $+1$ and are symmetric, four square to $-1$ and
+are antisymmetric, and every entry is an integer.
+
+$O(4,4)$ is generated by reflections, whose lifts are the $\gamma^a$ themselves
+and which generate $\Pin(4,4)$; the even part is $\Spin(4,4)$. By real Schur's
+lemma a representation is absolutely irreducible over $\mathbb{R}$ exactly when
+its commutant is one-dimensional.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+group & commutant dimension & verdict \\
+\midrule
+$\Pin(4,4)$, the universal cover of the real $O(4,4)$ & $1$ & absolutely irreducible \\
+$\Spin(4,4)$, the connected subgroup & $2$ & reducible, $16=8\oplus8$ \\
+\bottomrule
+\end{tabular}
+\caption{Computed, not asserted. The chirality operator commutes with every
+$S^{ab}$ but anticommutes with every $\gamma^a$, so a reflection exchanges the
+two halves and welds them into one irreducible sixteen.}
+\end{table}
+
+Independently, the $256$ Clifford words span the full real $16\times16$ matrix
+algebra (rank $256$) while the $128$ even words span exactly half.
+
+\subsection{Bilinears}
+
+With $C=\gamma^1\gamma^2\gamma^3\gamma^4$ one has $C^{\mathsf T}=C$ and
+$(C\gamma^a)^{\mathsf T}=-C\gamma^a$. For a commuting real field this is exactly
+the right pairing: the scalar $S=\Psi^{\mathsf T}C\Psi$ survives, while the
+vector current $\Psi^{\mathsf T}C\gamma^a\Psi$ vanishes identically. The kinetic
+term is therefore a genuine first-order symplectic form and not a total
+derivative.
+
+\subsection{Lagrangian, field equation, stress tensor}
+
+\begin{equation}
+  \mathcal L = e\left[\tfrac12\left(
+  \Psi^{\mathsf T}C\gamma^\mu D_\mu\Psi
+  - (D_\mu\Psi)^{\mathsf T}C\gamma^\mu\Psi\right)
+  - MS - V(S)\right],
+  \qquad
+  \gamma^\mu D_\mu\Psi = \bigl(M+V'(S)\bigr)\Psi .
+\end{equation}
+In the homogeneous flat reduction, including the bridge's scalar connection
+term, the field equation reads
+\begin{equation}
+  \gamma^0\!\left(\dot\Psi + \tfrac32H\Psi - \tfrac12(1-h)\Theta\Psi\right)
+  = \bigl(M+V'(S)\bigr)\Psi ,
+\end{equation}
+and contracting with $\Psi^{\mathsf T}C$, using only the (anti)symmetry of $C$
+and $C\gamma^0$ and a \emph{generic} sixteen-component $\Psi$, gives the exact
+dilution law
+\begin{equation}
+  \frac{\dd S}{\dd N} = -\nu(s)\,S,
+  \qquad
+  \nu(s) = 3-\xi\bigl(1-h(s)\bigr),
+  \qquad N=\ln a .
+  \label{eq:dilution}
+\end{equation}
+The on-shell Lagrangian is $SV'(S)-V(S)$ and the energy density is
+\begin{equation}
+  \rho = M S + V(S).
+\end{equation}
+Covariant conservation then fixes the pressure uniquely. For $V(S)=\lambda S^n$,
+\begin{equation}
+  p = \Bigl(\frac{\nu}{3}-1\Bigr)MS
+    + \Bigl(\frac{n\nu}{3}-1\Bigr)\lambda S^{n},
+  \qquad
+  w=\frac{p}{\rho},
+\end{equation}
+so the sector splits into two components with their own equations of state,
+\begin{equation}
+  w_{\mathrm{dust}} = \frac{\nu}{3}-1,
+  \qquad
+  w_{\mathrm{potential}} = \frac{n\nu}{3}-1 .
+\end{equation}
+
+\subsection{Closed-form background}
+
+Closing the system with the bounded, analytically integrable flow
+$\dd s/\dd N=\gamma s(1-s)$ --- a phenomenological choice, not a consequence of
+an action --- equation~\eqref{eq:dilution} integrates exactly:
+\begin{equation}
+  s(N)=\frac{s_0e^{\gamma N}}{1-s_0+s_0e^{\gamma N}},
+  \qquad
+  \ln S(N)=\ln S_0-3N
+  +\frac{\xi}{\gamma}\Bigl[\ln s+s-s^2\Bigr]_{s(0)}^{s(N)} ,
+\end{equation}
+using the identity $\bigl(s^{-1}+1-2s\bigr)s(1-s)=1-h(s)$.
+
+\section{Numerical solution}
+
+The background is integrated three independent ways: in closed form; by
+\texttt{fable\_cosmo\_rs}, a pure-Rust program driving the vendored pure-Rust
+SUNDIALS 7.8.0 CVODE solver (BDF, Newton, dense, $\mathrm{rtol}=10^{-12}$); and
+by SciPy's Radau method. Every comparison is gated and the programs exit nonzero
+on violation.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lrr}
+\toprule
+quantity & measured & gate \\
+\midrule
+covariant conservation residual & $1.194042\times10^{-15}$ & $10^{-13}$ \\
+integrators versus the closed form & $3.233014\times10^{-11}$ & $10^{-9}$ \\
+SciPy versus CVODE, $|a-b|/(1+|b|)$ & $3.612555\times10^{-11}$ & $10^{-10}$ \\
+$|w_{\mathrm{potential}}-(-0.764)|$ at $\xi=0$ & $0$ & $10^{-12}$ \\
+$|w_{\mathrm{dust}}|$ at $\xi=0$ & $0$ & $10^{-12}$ \\
+\bottomrule
+\end{tabular}
+\caption{Verification summary. The last two rows are exact, not merely small.}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.86\textwidth]{fable_equation_of_state.pdf}
+\caption{The equation of state of the whole sector and of its two components.
+The sector slides from pressureless at high redshift toward the benchmark value
+at late times.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.86\textwidth]{fable_dark_sector.pdf}
+\caption{One field, two behaviours. The dust-like and dark-energy-like parts of
+the same field cross near the present epoch.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.98\textwidth]{fable_second_mechanism.pdf}
+\caption{The second mechanism. At fixed potential index the bridge field shifts
+both equations of state, and gives the dust-like component a nonzero pressure.
+The effect vanishes exactly at $\xi=0$.}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.98\textwidth]{fable_cross_check.pdf}
+\caption{Left: SciPy Radau against the pure-Rust CVODE reference. Right: both
+against the closed-form solution, and the covariant conservation residual. The
+dashed lines are the gates.}
+\end{figure}
+
+\section{Is there a connection to dark matter and dark energy?}
+
+Both, from one field.
+
+At early times $S$ is large, the term $MS$ dominates, and because
+$w_{\mathrm{dust}}=\nu/3-1$ vanishes exactly at $\nu=3$, the sector is
+pressureless: it gravitates as \emph{dark matter}. At late times $S$ is small,
+and since $0<n<1$ the term $\lambda S^n$ falls far more slowly and comes to
+dominate, with $w_{\mathrm{potential}}=n\nu/3-1$: it gravitates as \emph{dark
+energy}. The handover needs no second field and no tuning beyond the choice of
+$n$; the numerical solution confirms the transition is monotonic and never
+crosses $w=-1$, so the model cannot counterfeit phantom behaviour.
+
+Two mechanisms make $w$ evolve, and they are independent:
+\begin{enumerate}
+  \item the \emph{potential} mechanism, a generalisation of quintessence: the
+  ratio $\lambda S^{n-1}/M$ grows as $a^{3(1-n)}$, moving the total $w$ from $0$
+  toward $n-1$;
+  \item the \emph{geometric} mechanism supplied by \texttt{gpt-5.6\_bridge}: the
+  bridge field enters $\nu$ and shifts both components' $w$ at fixed $n$, giving
+  the dark-matter-like component a small negative pressure. Nothing in a pure
+  quintessence can do this, and the effect vanishes exactly when the torsion
+  coupling is switched off.
+\end{enumerate}
+
+Finally, the benchmark. Switching the torsion coupling off makes
+$w_{\mathrm{potential}}$ exactly $n-1$ --- a flat, non-evolving equation of
+state --- so that $n=0.236$ reproduces $w=-0.764$ with \emph{zero} numerical
+error, while $w_{\mathrm{dust}}$ is exactly zero. The Unite-only constant-$w$
+benchmark is thus a clean limit of the model rather than a fitted output.
+
+\section{What is not claimed}
+
+\begin{itemize}
+  \item Only the \emph{background} is computed. No perturbations are evolved, so
+  nothing here constrains structure formation or the microwave background.
+  \item No observational dataset is shipped or used. The value $-0.764$ is
+  treated as a benchmark to be reproduced as a limit, never as data being
+  fitted; no likelihood is evaluated anywhere.
+  \item The flow law for the bridge field is a phenomenological closure chosen
+  for smoothness, boundedness and analytic integrability. It is not derived from
+  an action.
+  \item \texttt{gpt-5.6f\_rame} is a pseudo-orthogonal frame gauge
+  transformation. By itself it changes no observable; the physical content lies
+  in the connection.
+  \item The axial-torsion criterion \emph{failed}, and the superiority claim
+  rests instead on containment of both prior geometries as exact endpoints, on
+  the gradient term of \eqref{eq:curvature}, and on irremovability.
+  \item Agreement among three solvers establishes numerical correctness, not
+  physical correctness.
+  \item No claim is made that a new fundamental particle has been detected.
+\end{itemize}
+
+\end{document}

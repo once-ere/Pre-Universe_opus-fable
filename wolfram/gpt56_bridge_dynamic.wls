@@ -328,7 +328,8 @@ Print["Weitzenboeck torsion vector  : ", torsionVectorWeitzenboeck[[1]],
 Print["Axial torsion, Weitzenboeck  : 0 (identically)"];
 Print["Axial torsion, gpt-5.6_bridge: 0 (identically; the torsion is a scalar",
   " multiple of the Weitzenboeck torsion)"];
-Print["Obstruction witness d[(1-h)dT]_{x0 x4} for h = 1/2 + Tanh[H x4]/4:"];
+Print["Obstruction witness d[(1-h)dT]_{x0 x4} for the sample bridge field",
+  " s = 1/2 + Tanh[x4]/4, h = 3 s^2 - 2 s^3:"];
 Print["  ", obstructionWitness];
 Print[];
 Print["Reading: the canonical connection, Claude's Weitzenboeck connection and",
