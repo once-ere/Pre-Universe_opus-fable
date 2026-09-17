@@ -1,0 +1,228 @@
+# =============================================================================
+#  Pre-Universe_with_Claude  --  .gitignore
+#
+#  Three jobs, in order of importance:
+#
+#    1. no credential ever enters the history;
+#    2. editor, OS, language and build litter stays out;
+#    3. this project's own deliverables stay IN, and are never at the mercy of
+#       an exception list somebody has to remember to update.
+#
+#  Job 3 is why there is no blanket "*.log" rule.  Named provenance logs may be
+#  retained outside the local /logs/ workspace.  Ignoring them by extension and
+#  rescuing them by name would mean every new one is dropped in silence.
+#  Scratch is named instead.  See section 3 for the full reasoning.
+#
+#  One rule of gitignore worth knowing, because the superseded design depended on
+#  it entirely: a "!" rule cannot rescue a file whose PARENT DIRECTORY is
+#  excluded.  The shipped design does not depend on it.  Its only negations are
+#  !.env.example and !.env.sample in section 1, which negate the FILE pattern
+#  .env.* rather than any directory, so nothing here is at the mercy of
+#  directory ordering.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1.  SECRETS
+#
+#     Nothing matching these may ever be committed.  Nothing matching them is
+#     present today; these patterns are here so that it stays that way.
+# -----------------------------------------------------------------------------
+
+# environment and dotfile credential stores
+.env
+.env.*
+!.env.example
+!.env.sample
+.netrc
+_netrc
+.npmrc
+.pypirc
+.htpasswd
+
+# keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.asc
+*.gpg
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+*.ppk
+
+# anything that names itself a credential
+*credential*
+*credentials*
+*.secret
+*.secrets
+secrets.*
+*token*.json
+*_token
+*.token
+
+# Wolfram and Mathematica licensing material.  A mathpass file holds licence
+# passwords and an activation key is a credential in exactly the way an API
+# token is.  Neither belongs in a public repository.
+mathpass
+*.mathpass
+ActivationKey*
+*activation-key*
+*activation_key*
+
+# tool and agent state, which can carry tokens or conversation transcripts
+.claude/
+.vscode/
+.idea/
+*.code-workspace
+
+
+# the author's own task specification and working notes.  These are his private
+# working material, not a deliverable, and must not be published.  They were
+# tracked by mistake and were removed from tracking on 2026-09-14; the files
+# stay on disk.
+Pre.txt
+Pre-00.txt
+Gmail - w*equation of state*.pdf
+# ... and every later version of the same notes, whatever date is in the name
+/Pre*.txt
+
+# the plain-text extract of the author's original notebook.  It is GENERATED, by
+# claude-fable/extract/extract_original.wls, and PROVENANCE-00 gives the command.
+# Regenerate it rather than committing it; no .txt belongs in this repository.
+claude-fable/extract/cells_dump.txt
+claude-fable/extract/cells_index.txt
+
+# -----------------------------------------------------------------------------
+# 2.  LITTER
+#
+#     Editor swap files, OS metadata, language caches, build products, and the
+#     duplicate files this project accumulates while the author works.
+# -----------------------------------------------------------------------------
+
+# operating system
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# editors
+*.swp
+*.swo
+*.swn
+*~
+.*.sw[a-z]
+
+# Python, used here only by the notebook build tool
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.ipynb_checkpoints/
+
+# LaTeX build products.  The source and published PDF remain trackable; the
+# build script writes all intermediates under /build/.
+*.aux
+*.toc
+*.out
+*.lof
+*.lot
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.nav
+*.snm
+*.vrb
+*.xdv
+
+# Wolfram front-end scratch
+*.nb.bak
+*.mx
+.MathematicaHistory
+
+# hand-made duplicates: "EtoExp - Copy.wl", "EtoExp copy 2.wl" and friends
+*[Cc]opy*.wl
+*[Cc]opy*.nb
+*[Cc]opy*.mx
+
+# local backups taken before modifying a file.  These are multi-megabyte
+# duplicates of files that are already in the repository.
+backups/
+
+
+# -----------------------------------------------------------------------------
+# 3.  SCRATCH TEXT AND LOGS
+#
+#     This section used to read
+#
+#         *.txt
+#         *.log
+#         !Pre.txt
+#         !Pre-00.txt
+#         !README*.txt
+#         !LICENSE*.txt
+#         !CHANGELOG*.txt
+#         !claude-fable/**/*.log
+#         !claude-fable/**/*.txt
+#
+#     which was correct but a trap, for two reasons.
+#
+#     First it read as a lie.  Anyone opening this file saw "*.txt", concluded
+#     that .txt files are omitted, and was then surprised to find Pre.txt and
+#     Pre-00.txt in the repository.  The exception that made it true was fifteen
+#     lines further down, and gitignore resolves by LAST match, so you had to
+#     read to the bottom to know what the top meant.
+#
+#     Second, and worse, it failed silently in the one direction that matters.
+#     Ignore-everything-then-rescue means every NEW text or log deliverable is
+#     dropped unless somebody remembers to come back here and add another "!"
+#     line.  Nothing errors.  Nothing appears in git status.  The file is just
+#     quietly not in the commit.  That is the worst failure mode a .gitignore
+#     can have, and this repository is mostly provenance logs, so it was
+#     pointed straight at the thing most likely to be lost.
+#
+#     So the logic is inverted.  Nothing is ignored by extension.  Scratch is
+#     named, by the shapes scratch actually takes.  A stray notes.txt now shows
+#     up as untracked in git status, which is visible and one command to fix,
+#     instead of vanishing.  And adding a new provenance log or specification
+#     needs no edit here at all.
+# -----------------------------------------------------------------------------
+
+# editor and tool backups, and merge leftovers
+*.tmp
+*.temp
+*.bak
+*.bak.*
+*.orig
+*.rej
+*.old
+
+# files whose NAME says they are scratch
+scratch*
+Scratch*
+tmp[-_.]*
+temp[-_.]*
+untitled*
+Untitled*
+*-scratch.*
+*[-_]draft.*
+
+# There is deliberately no blanket *.log or *.txt rule, here or anywhere.
+#
+# LaTeX logs are contained by /build/ rather than ignored globally, preserving
+# the option to track an intentionally named provenance log elsewhere.
+
+# Reproducible command output and generated render products. Source notebooks,
+# figures, tests, Markdown, TeX, and compiled documentation remain trackable.
+/logs/
+/build/

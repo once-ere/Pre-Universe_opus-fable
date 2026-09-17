@@ -1,0 +1,554 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!45!black,
+  citecolor=blue!45!black,
+  urlcolor=blue!55!black,
+  pdftitle={The gpt5-6 16-component spinor cosmology},
+  pdfauthor={Reproducible computational report}
+}
+\graphicspath{{artifacts/figures/}}
+\newcommand{\gptfield}{\ensuremath{\mathrm{gpt5\_6}}}
+\newcommand{\dd}{\mathrm{d}}
+
+\title{The \texorpdfstring{\gptfield}{gpt5-6} 16-Component Spinor Cosmology\\
+\large Action, stress tensor, CPL reconstruction, numerical solution, and tests}
+\author{Reproducible computational report}
+\date{17 September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We define \gptfield{} as a four-flavor Dirac multiplet in
+$\mathbb C^{16}$ with a nonlinear potential depending on the scalar bilinear
+$S=\bar\Psi\Psi$.  In a homogeneous flat FLRW spacetime, the Dirac equations
+give $S=S_0a^{-3}$ and a perfect-fluid stress tensor with
+$\rho_\Psi=U$, $p_\Psi=SU_{,S}-U$, and
+$w_\Psi=-1+SU_{,S}/U$.  We reconstruct a potential that realizes the central
+CPL history $(w_0,w_a)=(-0.861,-0.60)$ reported for the combined
+Unite+BAO+CMB analysis by Camilleri et al.  A DOP853 integration verifies the
+bilinear, density, and Friedmann identities at relative errors below
+$4.6\times10^{-11}$.  The central reconstructed history crosses $w=-1$ and the
+homogeneous null-energy boundary at $a\simeq0.76833$ and begins accelerating at
+$z\simeq0.74842$.  We distinguish this result from the separate Unite-only
+constant-$w=-0.764$ fit and state the limits of the background reconstruction.
+\end{abstract}
+
+\tableofcontents
+
+\section{Scope and claim boundary}
+
+This report supplies a field-theoretic mechanism for a time-varying
+dark-energy background and a complete reproducible numerical calculation.  It
+does not perform an observational likelihood analysis, propagate parameter
+covariances, introduce a new irreducible Lorentz representation, or prove the
+stability of perturbations.  The potential is reconstructed from a prescribed
+background history.  Consequently, success means that the field equations and
+stress tensor consistently realize that history, not that nature selects this
+specific microscopic model.
+
+\section{Observational inputs}
+
+The supplied source was a six-page Gmail print discussing the results of
+Camilleri et al.\ \cite{camilleri}.  Because it is not the complete paper, the
+parameter values and fit labels were checked against the official arXiv v2
+record.  The two relevant fits are distinct (Table~\ref{tab:fits}).
+
+\begin{table}[ht]
+\centering
+\caption{Published constraints used or shown in this project.  Errors are the
+reported asymmetric $68.27\%$ credible intervals.}
+\label{tab:fits}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Data & Model & $\Omega_m$ & Dark-energy parameters \\
+\midrule
+Unite only & flat $w$CDM
+  & $0.197^{+0.056}_{-0.054}$
+  & $w=-0.764^{+0.078}_{-0.096}$ \\
+Unite+BAO+CMB & flat $w_0w_a$CDM
+  & $0.305\pm0.004$
+  & $w_0=-0.861^{+0.044}_{-0.042}$,
+    $w_a=-0.60^{+0.17}_{-0.19}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Unite-only row assumes a constant equation of state.  The combined row
+uses the Chevallier--Polarski--Linder (CPL) form \cite{chevallier,linder}
+\begin{equation}
+  w(a)=w_0+w_a(1-a).
+  \label{eq:cpl}
+\end{equation}
+The numerical reconstruction uses the central values in the combined row.  The
+constant-$w$ result is retained only as a separately labelled comparison.  It
+would be statistically incorrect to combine these values as if they arose from
+one likelihood.  The source paper also reports weak Bayesian evidence for
+evolving dark energy where frequentist summaries reach roughly
+$3.1$--$3.3\sigma$; neither statement is evidence specifically for \gptfield{}.
+
+We set $\Omega_{r0}=9\times10^{-5}$ and
+$H_0=70\,\mathrm{km\,s^{-1}\,Mpc^{-1}}$ for the demonstration.  These are
+numerical choices rather than additional Unite constraints.  The dimensionless
+background curves do not depend on the numerical value assigned to $H_0$.
+
+\section{The 16-component field}
+
+An ordinary Dirac spinor in $3+1$ dimensions has four complex components.  We
+define
+\begin{equation}
+  \gptfield\equiv\Psi=
+  (\psi_1,\psi_2,\psi_3,\psi_4)^T\in\mathbb C^{16},
+  \qquad
+  \Gamma^\mu=I_4\otimes\gamma^\mu.
+  \label{eq:field}
+\end{equation}
+For metric signature $(+---)$,
+\begin{equation}
+  \{\Gamma^\mu,\Gamma^\nu\}=2g^{\mu\nu}I_{16},
+  \qquad
+  \bar\Psi=\Psi^\dagger\Gamma^0.
+\end{equation}
+Thus ``16-component'' means a reducible four-flavor multiplet, not a new
+irreducible Lorentz spinor.  The flavor-invariant scalar condensate is
+\begin{equation}
+  S=\bar\Psi\Psi=\sum_{A=1}^{4}\bar\psi_A\psi_A.
+\end{equation}
+
+For a homogeneous solution in FLRW, the field equation implies
+\begin{equation}
+  \dot S+3HS=0,
+  \qquad
+  S(a)=S_0a^{-3}.
+  \label{eq:bilinear}
+\end{equation}
+The condensate therefore fills space and evolves as the universe expands.  One
+positive-$\Gamma^0$ representative can be written
+\begin{equation}
+  \Psi(t)=a(t)^{-3/2}e^{-i\Theta(t)}\Psi_0,
+  \qquad
+  \dot\Theta=U_{,S}.
+  \label{eq:phase}
+\end{equation}
+The common phase cancels from $S$, the vector current, and all background
+observables used below.  The code function \texttt{gpt5\_6(a)} therefore
+returns a convenient phase-suppressed representative with four populated
+positive-$\Gamma^0$ components.  It is verified to have 16 components,
+$\bar\Psi\Psi=S_0a^{-3}$, and zero spatial current.
+
+\section{Action, field equation, and stress tensor}
+
+Use natural units $c=\hbar=1$, $\kappa=8\pi G$, and a torsion-free spinor
+covariant derivative.  The action is
+\begin{equation}
+  \mathcal S=\int\dd^4x\sqrt{-g}\left[
+  \frac{R}{2\kappa}+\mathcal L_\Psi\right]
+  +\mathcal S_m+\mathcal S_r,
+  \label{eq:action}
+\end{equation}
+where the Hermitian spinor Lagrangian is
+\begin{equation}
+  \mathcal L_\Psi=
+  \frac{i}{2}\left[
+  \bar\Psi\Gamma^\mu\nabla_\mu\Psi
+  -(\nabla_\mu\bar\Psi)\Gamma^\mu\Psi
+  \right]-U(S).
+  \label{eq:lagrangian}
+\end{equation}
+Independent variation of $\bar\Psi$ gives
+\begin{equation}
+  i\Gamma^\mu\nabla_\mu\Psi-U_{,S}\Psi=0,
+  \label{eq:dirac}
+\end{equation}
+while variation of $\Psi$ gives the adjoint equation.  Metric or tetrad
+variation yields
+\begin{align}
+T_{\mu\nu}=\frac{i}{4}\big[&
+\bar\Psi\Gamma_\mu\nabla_\nu\Psi
++\bar\Psi\Gamma_\nu\nabla_\mu\Psi \nonumber\\
+&-(\nabla_\mu\bar\Psi)\Gamma_\nu\Psi
+-(\nabla_\nu\bar\Psi)\Gamma_\mu\Psi\big]
+-g_{\mu\nu}\mathcal L_\Psi.
+\label{eq:stress}
+\end{align}
+The two field equations imply $\nabla_\mu T^{\mu\nu}=0$ on shell.  This is the
+standard nonlinear-spinor construction used in spinor dark-energy models such
+as Ref.~\cite{caiwang}, here applied to a four-flavor multiplet.
+
+\section{Kinetic density and thermodynamics}
+
+Define the first-order Dirac kinetic density
+\begin{equation}
+  K_D=\frac{i}{2}\left[
+  \bar\Psi\Gamma^\mu\nabla_\mu\Psi
+  -(\nabla_\mu\bar\Psi)\Gamma^\mu\Psi
+  \right].
+\end{equation}
+On the homogeneous equations of motion,
+\begin{equation}
+  K_D=SU_{,S}.
+  \label{eq:kinetic}
+\end{equation}
+The stress tensor becomes the perfect-fluid expression
+\begin{equation}
+  T^\mu{}_{\nu}=\operatorname{diag}
+  (\rho_\Psi,-p_\Psi,-p_\Psi,-p_\Psi),
+\end{equation}
+where
+\begin{equation}
+  \boxed{\rho_\Psi=U(S)},
+  \qquad
+  \boxed{p_\Psi=SU_{,S}-U(S)},
+  \label{eq:rhop}
+\end{equation}
+and
+\begin{equation}
+  \boxed{w_\Psi=-1+\frac{SU_{,S}}{U}}.
+  \label{eq:w}
+\end{equation}
+The on-shell Lagrangian equals the pressure,
+$\mathcal L_\Psi=p_\Psi$.
+
+The word ``kinetic'' requires care.  $K_D$ is a first-order Dirac density; it is
+not a separately nonnegative contribution like $\dot\phi^2/2$ for a canonical
+scalar.  In the reconstructed central history $K_D<0$ before the $w=-1$
+crossing.  The trajectory therefore must not be called canonical single-field
+quintessence.
+
+\section{Exact CPL potential reconstruction}
+
+Conservation of the spinor component gives
+\begin{equation}
+  \frac{\dd\rho_\Psi}{\dd\ln a}=-3[1+w(a)]\rho_\Psi.
+\end{equation}
+Inserting Eq.~\eqref{eq:cpl} and integrating produces
+\begin{equation}
+  \rho_\Psi(a)=\rho_{\Psi0}
+  a^{-3(1+w_0+w_a)}\exp[-3w_a(1-a)].
+  \label{eq:density}
+\end{equation}
+Using Eq.~\eqref{eq:bilinear}, $a=(S_0/S)^{1/3}$, defines
+\begin{equation}
+\boxed{
+  U(S)=\rho_{\Psi0}
+  \left(\frac{S}{S_0}\right)^{1+w_0+w_a}
+  \exp\left[-3w_a\left(
+  1-\left(\frac{S_0}{S}\right)^{1/3}\right)\right]
+}.
+\label{eq:potential}
+\end{equation}
+Logarithmic differentiation gives
+\begin{equation}
+  \frac{SU_{,S}}{U}=1+w_0+w_a-w_a
+  \left(\frac{S_0}{S}\right)^{1/3}=1+w(a).
+\end{equation}
+Equations~\eqref{eq:rhop} and \eqref{eq:w} therefore reproduce CPL exactly.
+This demonstrates background equivalence, not perturbative equivalence or
+uniqueness.
+
+\section{Numerical initial-value problem}
+
+\subsection{Variables and equations}
+
+Let $N=\ln a$ and $\tau=H_0(t-t_0)$.  The state vector is
+\begin{equation}
+  \mathbf y(N)=\left(\tau,S,\rho_\Psi/\rho_{c0}\right).
+\end{equation}
+Flatness fixes
+\begin{equation}
+  \Omega_{\Psi0}=1-\Omega_{m0}-\Omega_{r0}=0.69491.
+\end{equation}
+The dimensionless Friedmann function and ODEs are
+\begin{align}
+E^2(N)&\equiv\frac{H^2}{H_0^2}
+=\Omega_{r0}e^{-4N}+\Omega_{m0}e^{-3N}
++\frac{\rho_\Psi}{\rho_{c0}},
+\label{eq:friedmann}\\
+\frac{\dd\tau}{\dd N}&=\frac1E,
+&\frac{\dd S}{\dd N}&=-3S,
+&\frac{\dd(\rho_\Psi/\rho_{c0})}{\dd N}
+&=-3[1+w(e^N)]\frac{\rho_\Psi}{\rho_{c0}}.
+\label{eq:odes}
+\end{align}
+
+At $N=0$ the initial values are
+\begin{equation}
+  \tau=0,
+  \qquad S=S_0=1,
+  \qquad \rho_\Psi/\rho_{c0}=0.69491.
+\end{equation}
+The code integrates separately from today to $N=-4$ and to $N=1$, then joins
+the output in increasing $a$.  The interval
+$0.0183\lesssim a\lesssim2.718$ contains 1201 output points.  SciPy's DOP853
+method uses relative tolerance $10^{-11}$ and absolute tolerance $10^{-13}$.
+
+\subsection{Discriminating numerical checks}
+
+Three analytic identities independently check the integration:
+\begin{equation}
+  S=S_0a^{-3},
+  \qquad
+  \rho_\Psi=U(S),
+  \qquad
+  E^2=\Omega_{r0}a^{-4}+\Omega_{m0}a^{-3}+U/\rho_{c0}.
+\end{equation}
+Table~\ref{tab:errors} records the maximum relative discrepancies over all
+1201 points.
+
+\begin{table}[ht]
+\centering
+\caption{Measured numerical consistency errors.}
+\label{tab:errors}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Invariant & Maximum relative error \\
+\midrule
+Bilinear dilution & $4.5232\times10^{-11}$ \\
+Density reconstruction & $2.2269\times10^{-11}$ \\
+Friedmann closure & $1.7988\times10^{-12}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+These numbers verify the implementation; they are not observational
+uncertainties.
+
+\section{Numerical results}
+
+At the present epoch the reconstructed component has
+\begin{align}
+  \rho_\Psi/\rho_{c0}&=0.69491000,\\
+  K_D/\rho_{c0}&=0.09659249,\\
+  p_\Psi/\rho_{c0}=\mathcal L_\Psi/\rho_{c0}&=-0.59831751,\\
+  w_\Psi&=-0.86100000.
+\end{align}
+The selected equation-of-state values are
+\begin{equation}
+  w(0.1)=-1.401,
+  \qquad w(1)=-0.861,
+  \qquad w(2)=-0.261.
+\end{equation}
+
+\subsection{Phantom crossing and the null-energy boundary}
+
+Equation~\eqref{eq:cpl} crosses $w=-1$ at
+\begin{equation}
+  a_{w=-1}=1+\frac{1+w_0}{w_a}=0.76833333,
+  \qquad z=0.30151844.
+  \label{eq:crossing}
+\end{equation}
+Since
+\begin{equation}
+  \rho_\Psi+p_\Psi=SU_{,S}=\rho_\Psi(1+w),
+\end{equation}
+this is also the homogeneous null-energy-condition boundary.  The independently
+interpolated numerical NEC root is $a=0.76833334$.  The central curve has
+$\rho+p<0$ before the root and $\rho+p>0$ after it.  The separately evaluated
+constant-$w=-0.764$ benchmark has no $w=-1$ crossing.
+
+\subsection{Acceleration transitions}
+
+The deceleration parameter for the complete radiation, matter, and spinor
+background is
+\begin{equation}
+  q=-\frac{\ddot a}{aH^2}
+  =\frac12\left(1+3\frac{p_{\rm tot}}{\rho_{\rm tot}}\right).
+\end{equation}
+Its roots are
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Event & $a$ & $z=a^{-1}-1$ \\
+\midrule
+Acceleration begins & $0.57194538$ & $0.74841869$ \\
+Formal future acceleration ends & $1.80120338$ & $-0.44481561$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The first event is in the observed past.  The second follows from extrapolating
+the empirical CPL law to $a>1$ and must not be interpreted as an observational
+forecast.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\textwidth]{gpt5_6_equation_of_state.pdf}
+\caption{The combined-data CPL central reconstruction, the separate
+Unite-only constant-$w$ benchmark, and the $\Lambda$CDM line.  Dataset labels in
+the legend prevent the two published fits from being conflated.}
+\label{fig:w}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\textwidth]{gpt5_6_energy_budget.pdf}
+\caption{Radiation, matter, and reconstructed spinor densities, all normalized
+to the present critical density.  Matter is a separate fluid in this run.}
+\label{fig:budget}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.96\textwidth]{gpt5_6_expansion.pdf}
+\caption{Integrated scale factor and total deceleration parameter.  The second
+$q=0$ crossing lies in the formal future CPL extrapolation.}
+\label{fig:expansion}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\textwidth]{gpt5_6_potential.pdf}
+\caption{The nonlinear potential $U(S)=\rho_\Psi$ and on-shell first-order
+Dirac kinetic density $K_D=SU_{,S}$.}
+\label{fig:potential}
+\end{figure}
+
+\clearpage
+\section{Dark energy and dark matter}
+
+\subsection{Dark-energy interpretation}
+
+The spinor condensate is homogeneous in the FLRW approximation, has negative
+pressure today, and makes the present universe accelerate when combined with
+matter and radiation.  It is therefore a consistent effective dark-energy
+mechanism at background level.  Its first-order kinetic structure permits the
+central reconstructed history to cross $w=-1$, unlike canonical one-field
+quintessence.  This capability does not guarantee viability: a complete
+fermionic perturbation analysis is needed to determine whether the NEC-violating
+regime is ghost-free, gradient-stable, causal, and weakly coupled.
+
+\subsection{Dark-matter limit}
+
+A different potential demonstrates the mathematical connection to dark matter.
+For
+\begin{equation}
+  U(S)=mS,
+\end{equation}
+one obtains
+\begin{equation}
+  p=SU_{,S}-U=0,
+  \qquad w=0,
+  \qquad \rho=mS\propto a^{-3}.
+\end{equation}
+The homogeneous component is then dust-like.  A potential
+$U=\Lambda+mS$ can mix constant and dust-like terms.  These facts do not make
+the CPL reconstruction used here dark matter.  Equation~\eqref{eq:friedmann}
+already includes a separate $\Omega_{m0}a^{-3}$ fluid; identifying the same
+spinor energy with all matter would double-count it.  A unified dark-sector
+model would require a new fit and successful calculations of clustering, sound
+speed, CMB anisotropies, lensing, and structure growth.
+
+\section{Limitations and open work}
+
+\begin{itemize}
+\item The field is a reducible four-flavor effective multiplet, not a newly
+discovered irreducible spin representation.
+\item Only a homogeneous scalar condensate is modeled; isotropy is imposed at
+the background level.
+\item The potential is reverse-engineered from a CPL central curve and is not
+unique.
+\item No observational likelihood, covariance, nuisance parameters, or
+uncertainty bands are calculated.
+\item No scalar, vector, tensor, or fermionic perturbations are evolved.
+\item Ghost, gradient, causal, radiative, and strong-coupling stability are not
+established.
+\item Future CPL behavior is an extrapolation outside the fitted domain.
+\item $S_0=1$ is a background normalization.  Particle-physics interpretation
+requires a dimensionful condensate scale and couplings.
+\end{itemize}
+
+\section{Choice of numerical solver}
+
+The requested Linux rustSolveIt repository \cite{rustsolveit} was examined.  It
+vendors a pure-Rust translation of SUNDIALS 7.8.0 and includes a
+mechanics-oriented notebook language and Jupyter wrapper.  It does not expose a
+drop-in Python ODE interface for the custom state in Eq.~\eqref{eq:odes}.
+Direct use would require a large external workspace, a separate Rust executable,
+and a Python/Rust data bridge.
+
+This system is smooth, nonstiff, has three variables, and has closed-form
+invariants.  DOP853 reaches relative consistency errors near $10^{-11}$, so the
+extra integration layer offers no numerical benefit for this calculation.  A
+future stiff perturbation system could justify a dedicated CVODE implementation.
+This is an interface and scope decision, not a claim that SUNDIALS is
+unsuitable.
+
+\section{Reproduction guide}
+
+From the repository root on Linux or macOS, create the environment:
+\begin{verbatim}
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+\end{verbatim}
+Run the focused tests and regenerate numerical artifacts:
+\begin{verbatim}
+.venv/bin/python -m pytest tests/test_gpt5_6_cosmology.py -q
+.venv/bin/python scripts/run_cosmology.py
+\end{verbatim}
+Build and execute the notebook, then export HTML:
+\begin{verbatim}
+.venv/bin/python scripts/build_cosmology_notebook.py
+.venv/bin/python -m jupyter nbconvert --to notebook --execute \
+  --inplace notebooks/gpt5_6_cosmology.ipynb \
+  --ExecutePreprocessor.timeout=180 \
+  --ExecutePreprocessor.record_timing=False
+.venv/bin/python -m jupyter nbconvert --to html \
+  --output-dir build notebooks/gpt5_6_cosmology.ipynb
+\end{verbatim}
+Build this PDF:
+\begin{verbatim}
+bash scripts/build_documentation.sh
+\end{verbatim}
+The expected focused result is 10 passing tests, no notebook error outputs,
+three invariant errors below $2\times10^{-9}$, four PNG/PDF figure pairs, and
+the compiled file \texttt{docs/gpt5\_6\_cosmology.pdf}.  The exact environment,
+source hashes, and validation commands are recorded in
+\texttt{PROVENANCE.md}.
+
+\begin{thebibliography}{9}
+\raggedright
+
+\bibitem{camilleri}
+R. Camilleri et al.,
+\emph{Supernovae Unite: Combining Pantheon+ and DES-SN5YR},
+arXiv:2609.05053v2, especially Sections 7.0.3--7.0.4,
+\url{https://arxiv.org/abs/2609.05053}.
+
+\bibitem{caiwang}
+Y.-F. Cai and J. Wang,
+\emph{Dark Energy Model with Spinor Matter and Its Quintom Scenario},
+Class. Quantum Grav. \textbf{25} (2008) 165014,
+arXiv:0806.3890,
+\url{https://arxiv.org/abs/0806.3890}.
+
+\bibitem{chevallier}
+M. Chevallier and D. Polarski,
+\emph{Accelerating Universes with Scaling Dark Matter},
+Int. J. Mod. Phys. D \textbf{10} (2001) 213--224.
+
+\bibitem{linder}
+E. V. Linder,
+\emph{Exploring the Expansion History of the Universe},
+Phys. Rev. D \textbf{68} (2003) 083504,
+arXiv:astro-ph/0208512.
+
+\bibitem{rustsolveit}
+once-ere,
+\emph{rustSolveIt on pure-Rust SUNDIALS 7.8.0 for Ubuntu Linux},
+\url{https://github.com/once-ere/rustSolveIt_linux_SUNDIALS_7_8_0},
+accessed 17 September 2026.
+
+\end{thebibliography}
+
+\end{document}

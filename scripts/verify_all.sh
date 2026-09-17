@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repository_root="$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")"
+cd "$repository_root"
+
+python_executable="${PYTHON:-.venv/bin/python}"
+if [[ ! -x "$python_executable" ]]; then
+  printf 'Missing Python environment: %s\n' "$python_executable" >&2
+  printf 'Create it with: python3 -m venv .venv && %s -m pip install -r requirements.txt\n' \
+    "$python_executable" >&2
+  exit 2
+fi
+
+mkdir -p build logs
+
+printf '\n[1/8] Python tests\n'
+"$python_executable" -m pytest -q | tee logs/verify-python.log
+
+printf '\n[2/8] Numerical artifacts\n'
+"$python_executable" scripts/run_cosmology.py > logs/verify-cosmology.json
+
+printf '\n[3/8] Jupyter notebook build and execution\n'
+"$python_executable" scripts/build_cosmology_notebook.py
+"$python_executable" -m jupyter nbconvert --to notebook --execute --inplace \
+  notebooks/gpt5_6_cosmology.ipynb --ExecutePreprocessor.timeout=180 \
+  --ExecutePreprocessor.record_timing=False \
+  2>&1 | tee logs/verify-notebook-execution.log
+"$python_executable" -m jupyter nbconvert --to html --output-dir build \
+  notebooks/gpt5_6_cosmology.ipynb \
+  2>&1 | tee logs/verify-notebook-html.log
+
+printf '\n[4/8] Structured cosmology checks\n'
+"$python_executable" - <<'PY'
+import json
+from pathlib import Path
+
+notebook = json.loads(Path("notebooks/gpt5_6_cosmology.ipynb").read_text())
+errors = [
+    output
+    for cell in notebook["cells"]
+    for output in cell.get("outputs", [])
+    if output.get("output_type") == "error"
+]
+assert not errors, errors
+
+summary = json.loads(Path("artifacts/gpt5_6_summary.json").read_text())
+diagnostics = summary["diagnostics"]
+for key in (
+    "max_relative_bilinear_error",
+    "max_relative_density_error",
+    "max_relative_friedmann_error",
+):
+    assert diagnostics[key] < 2.0e-9, (key, diagnostics[key])
+assert summary["observational_benchmarks"]["unite_only_constant_w"]["datasets"] == ["Unite"]
+assert summary["observational_benchmarks"]["unite_bao_cmb_cpl"]["datasets"] == ["Unite", "BAO", "CMB"]
+
+html = Path("build/gpt5_6_cosmology.html").read_text()
+assert html.count("<img") >= 4
+for caption in (
+    "CPL, Unite-only constant-w, and Lambda-CDM comparison",
+    "Radiation, matter, and reconstructed spinor density",
+    "Scale factor versus time and the two q=0 crossings",
+    "Reconstructed U(S) and on-shell Dirac kinetic density",
+):
+    assert f'alt="{caption}"' in html
+
+print("Notebook errors: 0")
+print("Invariant thresholds: passed")
+print("HTML figure alt text: passed")
+PY
+
+printf '\n[5/8] Markdown and Python hygiene\n'
+git diff --check
+"$python_executable" -m compileall -q src scripts tests
+
+printf '\n[6/8] LaTeX/PDF report\n'
+bash scripts/build_documentation.sh > logs/verify-documentation.log 2>&1
+if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
+  build/gpt5_6_cosmology.log; then
+  printf 'The final TeX log contains a diagnostic.\n' >&2
+  exit 1
+fi
+pdfinfo docs/gpt5_6_cosmology.pdf | grep -E '^(Pages|File size|PDF version):'
+
+printf '\n[7/8] Wolfram source and generated notebook\n'
+"$python_executable" scripts/build_gpt56_notebook.py
+wolframscript -file wolfram/gpt56_bridge.wls \
+  2>&1 | tee logs/verify-wolfram-source.log
+wolframscript -file scripts/run_gpt56_notebook.wls \
+  2>&1 | tee logs/verify-wolfram-notebook.log
+grep -q 'Tests succeeded: 36' logs/verify-wolfram-source.log
+grep -q 'Tests failed: 0' logs/verify-wolfram-source.log
+grep -q 'Notebook cells with messages: 0' logs/verify-wolfram-notebook.log
+grep -q 'Notebook tests succeeded: 36' logs/verify-wolfram-notebook.log
+grep -q 'Notebook tests failed: 0' logs/verify-wolfram-notebook.log
+
+printf '\n[8/8] Required deliverables\n'
+for path in \
+  README.md \
+  PROVENANCE.md \
+  docs/gpt5_6_cosmology.md \
+  docs/gpt5_6_cosmology.tex \
+  docs/gpt5_6_cosmology.pdf \
+  notebooks/gpt5_6_cosmology.ipynb \
+  notebooks/gpt-5.6_bridge.nb \
+  artifacts/SHA256SUMS \
+  artifacts/gpt5_6_summary.json \
+  artifacts/figures/gpt5_6_equation_of_state.png \
+  artifacts/figures/gpt5_6_energy_budget.png \
+  artifacts/figures/gpt5_6_expansion.png \
+  artifacts/figures/gpt5_6_potential.png; do
+  test -s "$path"
+done
+sha256sum -c artifacts/SHA256SUMS > logs/verify-checksums.log
+printf 'Release checksums: %s files passed\n' \
+  "$(wc -l < logs/verify-checksums.log)"
+
+printf '\nAll repository verification gates passed.\n'

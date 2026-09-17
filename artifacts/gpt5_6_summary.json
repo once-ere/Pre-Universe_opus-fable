@@ -1,0 +1,104 @@
+{
+  "model": "gpt5_6 16-component nonlinear spinor condensate",
+  "components": 16,
+  "parameters": {
+    "omega_m0": 0.305,
+    "omega_r0": 9e-05,
+    "omega_gpt5_6_0": 0.69491,
+    "w0": -0.861,
+    "wa": -0.6,
+    "h0_km_s_mpc": 70.0,
+    "spinor_bilinear0": 1.0
+  },
+  "observational_benchmarks": {
+    "unite_only_constant_w": {
+      "label": "Unite-only constant-w benchmark",
+      "datasets": [
+        "Unite"
+      ],
+      "model": "Flat-wCDM",
+      "omega_m": {
+        "value": 0.197,
+        "lower_error": 0.054,
+        "upper_error": 0.056
+      },
+      "w0": {
+        "value": -0.764,
+        "lower_error": 0.096,
+        "upper_error": 0.078
+      },
+      "wa": null,
+      "source": "Camilleri et al., arXiv:2609.05053v2, Section 7.0.3"
+    },
+    "unite_bao_cmb_cpl": {
+      "label": "Unite+BAO+CMB evolving-w benchmark",
+      "datasets": [
+        "Unite",
+        "BAO",
+        "CMB"
+      ],
+      "model": "Flat-w0waCDM",
+      "omega_m": {
+        "value": 0.305,
+        "lower_error": 0.004,
+        "upper_error": 0.004
+      },
+      "w0": {
+        "value": -0.861,
+        "lower_error": 0.042,
+        "upper_error": 0.044
+      },
+      "wa": {
+        "value": -0.6,
+        "lower_error": 0.19,
+        "upper_error": 0.17
+      },
+      "source": "Camilleri et al., arXiv:2609.05053v2, Section 7.0.4"
+    }
+  },
+  "today": {
+    "bilinear": 1.0,
+    "kinetic": 0.09659249000000002,
+    "potential": 0.69491,
+    "lagrangian": -0.59831751,
+    "density": 0.69491,
+    "pressure": -0.59831751,
+    "w": -0.861
+  },
+  "diagnostics": {
+    "max_relative_bilinear_error": 4.52315322855996e-11,
+    "max_relative_density_error": 2.2269033963012592e-11,
+    "max_relative_friedmann_error": 1.7988220277003838e-12,
+    "phantom_crossing_a": 0.7683333333333334,
+    "phantom_crossing_z": 0.30151843817787394,
+    "nec_crossing_a": 0.7683333356880944,
+    "nec_crossing_z": 0.30151843418902624,
+    "acceleration_crossing_a": [
+      0.5719453846844751,
+      1.8012033793908486
+    ],
+    "acceleration_crossing_z": [
+      0.7484186895776239,
+      -0.44481560969634015
+    ],
+    "w_today": -0.861,
+    "w_at_a_0_1": -1.401,
+    "w_at_a_2": -0.261
+  },
+  "figures": [
+    "artifacts/figures/gpt5_6_equation_of_state.png",
+    "artifacts/figures/gpt5_6_equation_of_state.pdf",
+    "artifacts/figures/gpt5_6_energy_budget.png",
+    "artifacts/figures/gpt5_6_energy_budget.pdf",
+    "artifacts/figures/gpt5_6_expansion.png",
+    "artifacts/figures/gpt5_6_expansion.pdf",
+    "artifacts/figures/gpt5_6_potential.png",
+    "artifacts/figures/gpt5_6_potential.pdf"
+  ],
+  "interpretation": {
+    "background_fit_only": true,
+    "phantom_crossing_requires_nec_violation": true,
+    "perturbative_stability_established": false,
+    "dark_matter_included_as_separate_fluid": true
+  }
+}
