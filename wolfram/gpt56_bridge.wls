@@ -249,6 +249,10 @@ gammaWeitzenboeck = affineFromFrameAndSpin[
 torsionWeitzenboeck = torsionTensor[gammaWeitzenboeck];
 curvatureWeitzenboeck = curvatureTensor[gammaWeitzenboeck];
 
+Print["[1] canonical 4+4 geometry: dimension = ", dimension,
+  ", tangent signature = ", Diagonal[eta4488],
+  ", Det g = ", Simplify[Det[gCanonical], assumptions]];
+
 (* ::NotebookSection:: Split-signature Clifford algebra and type-one spinors *)
 (* A real irreducible Cl(4,4) representation on the exterior algebra of R^4.
    Even forms occupy components 1..8 (type 1); odd forms occupy 9..16. *)
@@ -323,6 +327,10 @@ spinorGaugeConnection[loweredSpinConnection_] := Simplify[
 
 canonicalSpinorGaugeConnection = spinorGaugeConnection[omegaCanonical];
 
+Print["[2] real Clifford algebra: gamma dimensions = ", Dimensions[gamma4488],
+  ", all entries integer = ", And @@ (IntegerQ /@ Flatten[gamma4488]),
+  ", max |Clifford residual| = ", Max[Abs[Flatten[cliffordResidual]]]];
+
 (* ::NotebookSection:: The gpt-5.6f_rame frame and its spin lift *)
 hadamard4 = 1/2 {
   {1, 1, 1, 1},
@@ -387,6 +395,11 @@ omegaLeviCivitaInBridgeFrame = spinConnectionFromAffine[
 omegaWeitzenboeckInBridgeFrame = spinConnectionFromAffine[
   gpt56Frame, inverseGpt56Frame, gammaWeitzenboeck
 ];
+
+Print["[3] gpt-5.6f_rame: Hadamard generator squares to the identity = ",
+  bridgeGenerator . bridgeGenerator === IdentityMatrix[dimension],
+  ", Det Lambda = ", Simplify[Det[bridgeLambda], assumptions],
+  ", rapidity = ", bridgeRapidity];
 
 (* ::NotebookSection:: The gpt-5.6_bridge connection family *)
 (* Exact visible label: gpt-5.6_bridge. Valid Wolfram symbol: gpt56Bridge. *)
@@ -520,6 +533,10 @@ interiorCurvatureWitness = FullSimplify[
   curvatureComponent[gpt56BridgeAffine[1/2], 2, 1, 1, 2],
   assumptions
 ];
+
+Print["[4] gpt-5.6_bridge family: interior torsion witness T^1_(0 1) = ",
+  interiorTorsionWitness,
+  ", interior curvature witness R^1_(0 0 1) = ", interiorCurvatureWitness];
 
 (* ::NotebookSection:: Exact verification report *)
 tests = {
@@ -739,7 +756,9 @@ tests = {
 };
 
 report = TestReport[tests];
-Print[report];
+(* The raw TestReportObject carries timestamps and a CreationID, so printing it
+   would make every captured notebook output differ between runs. *)
+Print["Tests run: ", Length[tests]];
 Print["Canonical nonzero spin-connection components: ",
   nonzeroCount[omegaCanonical]];
 Print["Interior torsion witness T^1_(0 1): ", interiorTorsionWitness];

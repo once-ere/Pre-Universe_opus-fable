@@ -15,13 +15,13 @@ fi
 
 mkdir -p build logs
 
-printf '\n[1/12] Python tests\n'
+printf '\n[1/13] Python tests\n'
 "$python_executable" -m pytest -q | tee logs/verify-python.log
 
-printf '\n[2/12] Numerical artifacts\n'
+printf '\n[2/13] Numerical artifacts\n'
 "$python_executable" scripts/run_cosmology.py > logs/verify-cosmology.json
 
-printf '\n[3/12] Jupyter notebook build and execution\n'
+printf '\n[3/13] Jupyter notebook build and execution\n'
 "$python_executable" scripts/build_cosmology_notebook.py
 "$python_executable" -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/gpt5_6_cosmology.ipynb --ExecutePreprocessor.timeout=180 \
@@ -30,8 +30,9 @@ printf '\n[3/12] Jupyter notebook build and execution\n'
 "$python_executable" -m jupyter nbconvert --to html --output-dir build \
   notebooks/gpt5_6_cosmology.ipynb \
   2>&1 | tee logs/verify-notebook-html.log
+"$python_executable" scripts/normalize_notebooks.py
 
-printf '\n[4/12] Structured cosmology checks\n'
+printf '\n[4/13] Structured cosmology checks\n'
 "$python_executable" - <<'PY'
 import json
 from pathlib import Path
@@ -71,11 +72,11 @@ print("Invariant thresholds: passed")
 print("HTML figure alt text: passed")
 PY
 
-printf '\n[5/12] Markdown and Python hygiene\n'
+printf '\n[5/13] Markdown and Python hygiene\n'
 git diff --check
 "$python_executable" -m compileall -q src scripts tests
 
-printf '\n[6/12] LaTeX/PDF report\n'
+printf '\n[6/13] LaTeX/PDF report\n'
 bash scripts/build_documentation.sh > logs/verify-documentation.log 2>&1
 for report in gpt5_6_cosmology gpt5_6_dark_sector_relationships; do
   if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
@@ -87,19 +88,22 @@ for report in gpt5_6_cosmology gpt5_6_dark_sector_relationships; do
   pdfinfo "docs/${report}.pdf" | grep -E '^(Pages|File size|PDF version):'
 done
 
-printf '\n[7/12] Wolfram source and generated notebook\n'
+printf '\n[7/13] Wolfram source and generated notebook\n'
 "$python_executable" scripts/build_gpt56_notebook.py
 wolframscript -file wolfram/gpt56_bridge.wls \
   2>&1 | tee logs/verify-wolfram-source.log
-wolframscript -file scripts/run_gpt56_notebook.wls \
+wolframscript -file scripts/execute_gpt56_notebook.wls \
   2>&1 | tee logs/verify-wolfram-notebook.log
 grep -q 'Tests succeeded: 36' logs/verify-wolfram-source.log
 grep -q 'Tests failed: 0' logs/verify-wolfram-source.log
-grep -q 'Notebook cells with messages: 0' logs/verify-wolfram-notebook.log
-grep -q 'Notebook tests succeeded: 36' logs/verify-wolfram-notebook.log
-grep -q 'Notebook tests failed: 0' logs/verify-wolfram-notebook.log
+grep -q 'Input cells evaluated    : 5' logs/verify-wolfram-notebook.log
+grep -q 'Output cells stored      : 5' logs/verify-wolfram-notebook.log
+grep -q 'Cells with messages      : 0' logs/verify-wolfram-notebook.log
+grep -q 'Notebook tests succeeded : 36' logs/verify-wolfram-notebook.log
+grep -q 'Notebook tests failed    : 0' logs/verify-wolfram-notebook.log
+grep -q 'SUCCESS: the notebook is evaluated' logs/verify-wolfram-notebook.log
 
-printf '\n[8/12] Required deliverables\n'
+printf '\n[8/13] Required deliverables\n'
 for path in \
   README.md \
   PROVENANCE.md \
@@ -123,7 +127,7 @@ sha256sum -c artifacts/SHA256SUMS > logs/verify-checksums.log
 printf 'Release checksums: %s files passed\n' \
   "$(wc -l < logs/verify-checksums.log)"
 
-printf '\n[9/12] fableSpinor symbolic proofs (Wolfram)\n'
+printf '\n[9/13] fableSpinor symbolic proofs (Wolfram)\n'
 wolframscript -file wolfram/fable_spinor.wls \
   2>&1 | tee logs/verify-fable-spinor.log
 wolframscript -file wolfram/gpt56_bridge_dynamic.wls \
@@ -135,7 +139,7 @@ grep -q 'Spin(4,4) commutant dimension         : 2' logs/verify-fable-spinor.log
 grep -q 'Succeeded    : 17' logs/verify-gpt56-bridge-dynamic.log
 grep -q 'Failed       : 0' logs/verify-gpt56-bridge-dynamic.log
 
-printf '\n[10/12] fable_cosmo_rs: pure-Rust SUNDIALS reference integration\n'
+printf '\n[10/13] fable_cosmo_rs: pure-Rust SUNDIALS reference integration\n'
 if [[ ! -e vendor/sundials_rs/crates/cvode_rs/Cargo.toml ]]; then
   printf 'The SUNDIALS submodule is missing. Run:\n' >&2
   printf '  git submodule update --init --recursive\n' >&2
@@ -151,12 +155,12 @@ fi
   2>&1 | tee logs/verify-fable-cosmo-run.log
 grep -q 'SUCCESS: every gated invariant holds.' logs/verify-fable-cosmo-run.log
 
-printf '\n[11/12] Three-way cross-check and figures\n'
+printf '\n[11/13] Three-way cross-check and figures\n'
 "$python_executable" scripts/run_fable_cosmology.py \
   2>&1 | tee logs/verify-fable-cross-check.log
 grep -q 'SUCCESS: every gate holds.' logs/verify-fable-cross-check.log
 
-printf '\n[12/12] fableSpinor notebook, report and deliverables\n'
+printf '\n[12/13] fableSpinor notebook, report and deliverables\n'
 "$python_executable" scripts/build_fable_notebook.py
 "$python_executable" -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/fable_spinor_dark_energy.ipynb --ExecutePreprocessor.timeout=900 \
@@ -165,6 +169,7 @@ printf '\n[12/12] fableSpinor notebook, report and deliverables\n'
 "$python_executable" -m jupyter nbconvert --to html --output-dir build \
   notebooks/fable_spinor_dark_energy.ipynb \
   2>&1 | tee logs/verify-fable-notebook-html.log
+"$python_executable" scripts/normalize_notebooks.py
 "$python_executable" scripts/check_fable_deliverables.py
 
 if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
@@ -174,5 +179,11 @@ if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
 fi
 printf 'fable_spinor:\n'
 pdfinfo docs/fable_spinor.pdf | grep -E '^(Pages|File size|PDF version):'
+
+printf '\n[13/13] Every notebook executed, Jupyter and Mathematica\n'
+"$python_executable" scripts/audit_notebooks.py \
+  2>&1 | tee logs/verify-notebook-audit.log
+grep -q 'not executed      : 0' logs/verify-notebook-audit.log
+grep -q 'SUCCESS: every notebook is fully executed' logs/verify-notebook-audit.log
 
 printf '\nAll repository verification gates passed.\n'
