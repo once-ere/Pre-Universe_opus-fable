@@ -1,0 +1,41 @@
+{
+  "engine": "sundials_rs 7.8.0 (pure Rust, Linux x86-64)",
+  "method": "CVODE BDF + Newton + dense",
+  "cross_check_method": "scipy.integrate.solve_ivp Radau, rtol=1e-12, atol=1e-14",
+  "parameters": {
+    "omega_r0": 9e-05,
+    "omega_b0": 0.049,
+    "mass_m": 0.256,
+    "lambda": 0.6949099999999999,
+    "index_n": 0.236,
+    "xi": 0.15,
+    "gamma_flow": 0.35,
+    "bridge_s0": 0.5,
+    "bilinear_s0": 1
+  },
+  "today": {
+    "w_fable": -0.5693611477426885,
+    "w_dust": -0.025000000000000022,
+    "w_potential": -0.7699,
+    "omega_fable": 0.95091,
+    "deceleration": -0.31207181350000013,
+    "dilution": 2.925
+  },
+  "gates": {
+    "max_cross_check_difference": 3.612555296640549e-11,
+    "max_closed_form_residual": 3.233013856629441e-11,
+    "max_continuity_residual": 1.1940422890663852e-15,
+    "benchmark_w_potential_error": 0.0,
+    "benchmark_w_dust_error": 0.0
+  },
+  "tolerances": {
+    "max_cross_check_difference": 1e-10,
+    "max_closed_form_residual": 1e-09,
+    "max_continuity_residual": 1e-13,
+    "benchmark": 1e-12
+  },
+  "cvode": {
+    "n_steps": 261,
+    "n_rhs_evals": 291
+  }
+}

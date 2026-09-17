@@ -1,0 +1,32 @@
+{
+  "engine": "sundials_rs 7.8.0 (pure Rust, Linux x86-64)",
+  "method": "CVODE BDF + Newton + dense",
+  "parameters": {
+    "omega_r0": 9.0000000000000006e-05,
+    "omega_b0": 0.049000000000000002,
+    "mass_m": 0.25600000000000001,
+    "lambda": 0.69490999999999992,
+    "index_n": 0.23599999999999999,
+    "xi": 0.14999999999999999,
+    "gamma_flow": 0.34999999999999998,
+    "bridge_s0": 0.5,
+    "bilinear_s0": 1
+  },
+  "today": {
+    "w_fable": -0.56936114774268853,
+    "w_dust": -0.025000000000000022,
+    "w_potential": -0.76990000000000003,
+    "omega_fable": 0.95091000000000003,
+    "deceleration": -0.31207181350000013,
+    "dilution": 2.9249999999999998
+  },
+  "invariants": {
+    "max_continuity_residual": 1.1940422890663852e-15,
+    "max_closed_form_residual": 3.2330138566294409e-11,
+    "max_bridge_residual": 5.3963389312627896e-11
+  },
+  "cvode": {
+    "n_steps": 261,
+    "n_rhs_evals": 291
+  }
+}

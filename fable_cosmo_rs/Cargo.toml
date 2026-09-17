@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "fable_cosmo_rs"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Background cosmology of the fableSpinor field: the exact bilinear dilution law, the unified dark-sector energy density and pressure, and the gpt-5.6_bridge torsion mechanism, integrated with the vendored pure-Rust SUNDIALS 7.8.0 CVODE (BDF + Newton + dense)."
+
+[dependencies]
+sundials_core = { path = "../vendor/sundials_rs/crates/sundials_core" }
+cvode_rs = { path = "../vendor/sundials_rs/crates/cvode_rs" }
+
+[profile.release]
+opt-level = 3
