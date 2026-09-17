@@ -77,12 +77,15 @@ git diff --check
 
 printf '\n[6/8] LaTeX/PDF report\n'
 bash scripts/build_documentation.sh > logs/verify-documentation.log 2>&1
-if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
-  build/gpt5_6_cosmology.log; then
-  printf 'The final TeX log contains a diagnostic.\n' >&2
-  exit 1
-fi
-pdfinfo docs/gpt5_6_cosmology.pdf | grep -E '^(Pages|File size|PDF version):'
+for report in gpt5_6_cosmology gpt5_6_dark_sector_relationships; do
+  if grep -En 'Warning|Error|Undefined|undefined|Overfull|Underfull' \
+    "build/${report}.log"; then
+    printf 'The final TeX log for %s contains a diagnostic.\n' "$report" >&2
+    exit 1
+  fi
+  printf '%s:\n' "$report"
+  pdfinfo "docs/${report}.pdf" | grep -E '^(Pages|File size|PDF version):'
+done
 
 printf '\n[7/8] Wolfram source and generated notebook\n'
 "$python_executable" scripts/build_gpt56_notebook.py
@@ -103,6 +106,9 @@ for path in \
   docs/gpt5_6_cosmology.md \
   docs/gpt5_6_cosmology.tex \
   docs/gpt5_6_cosmology.pdf \
+  docs/gpt5_6_dark_sector_relationships.md \
+  docs/gpt5_6_dark_sector_relationships.tex \
+  docs/gpt5_6_dark_sector_relationships.pdf \
   notebooks/gpt5_6_cosmology.ipynb \
   notebooks/gpt-5.6_bridge.nb \
   artifacts/SHA256SUMS \

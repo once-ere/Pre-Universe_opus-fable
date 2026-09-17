@@ -9,13 +9,18 @@ export SOURCE_DATE_EPOCH=1789603200
 export FORCE_SOURCE_DATE=1
 
 mkdir -p build
-pdflatex -interaction=nonstopmode -halt-on-error \
-  -output-directory build docs/gpt5_6_cosmology.tex
-pdflatex -interaction=nonstopmode -halt-on-error \
-  -output-directory build docs/gpt5_6_cosmology.tex
-pdflatex -interaction=nonstopmode -halt-on-error \
-  -output-directory build docs/gpt5_6_cosmology.tex
-cp build/gpt5_6_cosmology.pdf docs/gpt5_6_cosmology.pdf
+reports=(
+  gpt5_6_cosmology
+  gpt5_6_dark_sector_relationships
+)
 
-printf 'report: docs/gpt5_6_cosmology.pdf\n'
-pdfinfo docs/gpt5_6_cosmology.pdf | sed -n '/^Pages:/p;/^File size:/p'
+for report in "${reports[@]}"; do
+  for _ in 1 2 3; do
+    pdflatex -interaction=nonstopmode -halt-on-error \
+      -output-directory build "docs/${report}.tex"
+  done
+  cp "build/${report}.pdf" "docs/${report}.pdf"
+
+  printf 'report: docs/%s.pdf\n' "$report"
+  pdfinfo "docs/${report}.pdf" | sed -n '/^Pages:/p;/^File size:/p'
+done

@@ -85,15 +85,17 @@ The generation chain is:
    outputs in the notebook with execution timing metadata disabled.
 4. `nbconvert --to html` writes the local HTML rendering under `build/`.
 5. `scripts/build_documentation.sh` performs three strict `pdflatex` passes on
-   `docs/gpt5_6_cosmology.tex` and publishes the 11-page PDF beside its source.
+   `docs/gpt5_6_cosmology.tex` and
+   `docs/gpt5_6_dark_sector_relationships.tex`, publishing the 11-page main
+   report and 7-page dark-sector technical note beside their sources.
 6. `scripts/build_gpt56_notebook.py` generates the Mathematica notebook from
    `wolfram/gpt56_bridge.wls`.
 
-The Markdown guide and LaTeX source repeat equations for pedagogy, but all
-displayed numerical values were checked against the generated JSON and executed
-notebook. The `build/`, `logs/`, and `backups/` directories are intentionally
-ignored. Source notebooks, figures, JSON, Markdown, TeX, and the compiled report
-remain repository deliverables.
+The Markdown publications and LaTeX sources repeat equations for pedagogy, but
+all displayed numerical values were checked against the generated JSON and
+executed notebook. The `build/`, `logs/`, and `backups/` directories are
+intentionally ignored. Source notebooks, figures, JSON, Markdown, TeX, and both
+compiled reports remain repository deliverables.
 
 Generated PDFs use the fixed UTC release epoch `1789603200` (2026-09-17), and
 executed notebooks omit wall-clock timing metadata. Rebuilding with the pinned
@@ -166,8 +168,9 @@ The command performs these gates:
 4. All three numerical invariants remain below $2\times10^{-9}$.
 5. The HTML export contains descriptive alt text for all four figures.
 6. Python compilation and `git diff --check` pass.
-7. The 11-page LaTeX report builds with no warning, error, undefined-reference,
-   overfull-box, or underfull-box diagnostic in its final log.
+7. The 11-page LaTeX report and 7-page dark-sector technical note build with no
+   warning, error, undefined-reference, overfull-box, or underfull-box
+   diagnostic in either final log.
 8. Wolfram source and generated notebook each report 36 successes and zero
    failures; the notebook runner reports zero message-producing cells.
 9. Every required source and generated deliverable is present and nonempty.
