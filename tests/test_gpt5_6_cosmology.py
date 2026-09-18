@@ -1,6 +1,13 @@
+"""Tests for the retained gpt5_6 four-flavour Dirac cosmology.
+
+Run from the repository root (pytest.ini puts src/ on the import path):
+
+    python3 -m pytest tests/test_gpt5_6_cosmology.py -q
+"""
+
 import numpy as np
 
-from src.gpt5_6_cosmology import (
+from gpt5_6_cosmology import (
     GAMMA_16,
     UNITE_BAO_CMB_CPL_BENCHMARK,
     UNITE_ONLY_CONSTANT_W_BENCHMARK,

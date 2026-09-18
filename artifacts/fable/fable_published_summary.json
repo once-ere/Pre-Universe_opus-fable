@@ -2,6 +2,27 @@
   "engine": "sundials_rs 7.8.0 (pure Rust, Linux x86-64)",
   "method": "CVODE BDF + Newton + dense",
   "cross_check_method": "scipy.integrate.solve_ivp Radau, rtol=1e-12, atol=1e-14",
+  "cross_check_columns": [
+    "e_folds",
+    "scale_factor",
+    "redshift",
+    "bridge",
+    "bridge_h",
+    "dilution",
+    "bilinear",
+    "density_dust",
+    "density_potential",
+    "density_fable",
+    "pressure_dust",
+    "pressure_potential",
+    "pressure_fable",
+    "w_fable",
+    "w_dust",
+    "w_potential",
+    "hubble_over_h0",
+    "omega_fable",
+    "deceleration"
+  ],
   "parameters": {
     "omega_r0": 9e-05,
     "omega_b0": 0.049,
@@ -22,7 +43,7 @@
     "dilution": 2.925
   },
   "gates": {
-    "max_cross_check_difference": 3.612555296640549e-11,
+    "max_cross_check_difference": 5.434065106609878e-11,
     "max_closed_form_residual": 3.233013856629441e-11,
     "max_continuity_residual": 1.1940422890663852e-15,
     "benchmark_w_potential_error": 0.0,

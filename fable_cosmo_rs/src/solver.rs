@@ -1,19 +1,16 @@
-#![forbid(unsafe_code)]
-#![deny(warnings)]
-#![allow(non_snake_case)]
-
 //! The CVODE driver: one BDF + Newton + dense integration in e-folds.
 //!
 //! The vendored pure-Rust SUNDIALS 7.8.0 is the only integrator; nothing in
-//! this crate ever steps the system by hand.
+//! this crate ever steps the system by hand. Every flag the engine returns is
+//! checked and turned into a named error; none is discarded.
 
 use std::any::Any;
 
 use cvode_rs::prelude::*;
 
 use crate::model::{
-    bridge_closed_form, log_bilinear_closed_form, sample_from_state, Params, Sample, ABS_TOL,
-    IDX_BRIDGE, IDX_LOG_S, MAX_STEPS_PER_CALL, N_EQ, REL_TOL,
+    closed_form_state, sample_from_state, Params, Sample, State, ABS_TOL, IDX_BRIDGE,
+    IDX_LOG_S, MAX_STEPS_PER_CALL, N_EQ, REL_TOL,
 };
 use crate::rhs;
 
@@ -30,15 +27,31 @@ pub struct Run {
     pub stats: Stats,
 }
 
-fn with_data_mut<R>(v: &N_Vector, f: impl FnOnce(&mut [f64]) -> R) -> Option<R> {
-    let mut d = N_VGetArrayPointer(v)?;
-    Some(f(&mut d))
+/// Turn a SUNDIALS return flag into a named error.
+fn check(flag: i32, what: &str) -> Result<(), String> {
+    if flag == CV_SUCCESS {
+        Ok(())
+    } else {
+        Err(format!("{what} failed: {flag}"))
+    }
 }
 
-fn read_state(v: &N_Vector) -> Result<[f64; 2], String> {
+/// Copy a slice into a vector under a scoped borrow, so the `RefMut` from
+/// `N_VGetArrayPointer` is never held across an engine call.
+fn fill(v: &N_Vector, values: &[f64], what: &str) -> Result<(), String> {
+    let mut d = N_VGetArrayPointer(v)
+        .ok_or_else(|| format!("N_VGetArrayPointer returned None for {what}"))?;
+    d.copy_from_slice(values);
+    Ok(())
+}
+
+fn read_state(v: &N_Vector) -> Result<State, String> {
     let d = N_VGetArrayPointer(v)
         .ok_or_else(|| "N_VGetArrayPointer returned None for y".to_string())?;
-    Ok([d[IDX_LOG_S], d[IDX_BRIDGE]])
+    let mut state = [0.0; crate::model::N_STATE];
+    state[IDX_LOG_S] = d[IDX_LOG_S];
+    state[IDX_BRIDGE] = d[IDX_BRIDGE];
+    Ok(state)
 }
 
 /// Integrate the background from `n_start` to `n_end` on a uniform grid of
@@ -66,54 +79,30 @@ pub fn integrate(
     }
     let ctx = ctx_out.ok_or_else(|| "SUNContext_Create returned no context".to_string())?;
 
+    let initial = closed_form_state(n_start, p);
     let y = N_VNew_Serial(N_EQ, &ctx)
         .ok_or_else(|| "N_VNew_Serial(y) returned None".to_string())?;
-    let initial = [
-        log_bilinear_closed_form(n_start, p),
-        bridge_closed_form(n_start, p),
-    ];
-    with_data_mut(&y, |d| d.copy_from_slice(&initial))
-        .ok_or_else(|| "N_VGetArrayPointer returned None for y".to_string())?;
+    fill(&y, &initial, "y")?;
 
     let abstol = N_VNew_Serial(N_EQ, &ctx)
         .ok_or_else(|| "N_VNew_Serial(abstol) returned None".to_string())?;
-    with_data_mut(&abstol, |d| d.copy_from_slice(&ABS_TOL))
-        .ok_or_else(|| "N_VGetArrayPointer returned None for abstol".to_string())?;
+    fill(&abstol, &ABS_TOL, "abstol")?;
 
     let cv = CVodeCreate(CV_BDF, &ctx)
         .ok_or_else(|| "CVodeCreate(CV_BDF) returned None".to_string())?;
-
-    let mut f = CVodeInit(&cv, rhs::rhs, n_start, &y);
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeInit failed: {f}"));
-    }
-    f = CVodeSVtolerances(&cv, REL_TOL, &abstol);
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeSVtolerances failed: {f}"));
-    }
+    check(CVodeInit(&cv, rhs::rhs, n_start, &y), "CVodeInit")?;
+    check(CVodeSVtolerances(&cv, REL_TOL, &abstol), "CVodeSVtolerances")?;
 
     let a_mat = SUNDenseMatrix(N_EQ, N_EQ, &ctx)
         .ok_or_else(|| "SUNDenseMatrix returned None".to_string())?;
     let ls = SUNLinSol_Dense(&y, &a_mat, &ctx)
         .ok_or_else(|| "SUNLinSol_Dense returned None".to_string())?;
-    f = CVodeSetLinearSolver(&cv, &ls, Some(&a_mat));
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeSetLinearSolver failed: {f}"));
-    }
+    check(CVodeSetLinearSolver(&cv, &ls, Some(&a_mat)), "CVodeSetLinearSolver")?;
 
     let user: Box<dyn Any> = Box::new(*p);
-    f = CVodeSetUserData(&cv, Some(user));
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeSetUserData failed: {f}"));
-    }
-    f = CVodeSetMaxNumSteps(&cv, MAX_STEPS_PER_CALL);
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeSetMaxNumSteps failed: {f}"));
-    }
-    f = CVodeSetStopTime(&cv, n_end);
-    if f != CV_SUCCESS {
-        return Err(format!("CVodeSetStopTime failed: {f}"));
-    }
+    check(CVodeSetUserData(&cv, Some(user)), "CVodeSetUserData")?;
+    check(CVodeSetMaxNumSteps(&cv, MAX_STEPS_PER_CALL), "CVodeSetMaxNumSteps")?;
+    check(CVodeSetStopTime(&cv, n_end), "CVodeSetStopTime")?;
 
     let mut out = Vec::with_capacity(samples);
     out.push(sample_from_state(n_start, &initial, p));
@@ -121,10 +110,8 @@ pub fn integrate(
     let step = (n_end - n_start) / (samples as f64 - 1.0);
     let mut n_now = n_start;
     for k in 1..samples {
-        let mut tout = n_start + step * k as f64;
-        if tout > n_end {
-            tout = n_end;
-        }
+        // The last grid point is n_end up to rounding; the clamp guarantees it.
+        let tout = (n_start + step * k as f64).min(n_end);
         let flag = CVode(&cv, tout, &y, &mut n_now, CV_NORMAL);
         if flag < 0 {
             return Err(format!("CVode failed with flag {flag} at N = {n_now}"));
@@ -134,17 +121,39 @@ pub fn integrate(
     }
 
     let mut stats = Stats::default();
-    let flag = CVodeGetNumSteps(&cv, &mut stats.n_steps);
-    if flag != CV_SUCCESS {
-        return Err(format!("CVodeGetNumSteps failed: {flag}"));
-    }
-    let flag = CVodeGetNumRhsEvals(&cv, &mut stats.n_rhs);
-    if flag != CV_SUCCESS {
-        return Err(format!("CVodeGetNumRhsEvals failed: {flag}"));
-    }
+    check(CVodeGetNumSteps(&cv, &mut stats.n_steps), "CVodeGetNumSteps")?;
+    check(CVodeGetNumRhsEvals(&cv, &mut stats.n_rhs), "CVodeGetNumRhsEvals")?;
 
     Ok(Run {
         samples: out,
         stats,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_a_degenerate_range_and_too_few_samples() {
+        let p = Params::default();
+        assert!(integrate(&p, 0.0, 0.0, 10).is_err());
+        assert!(integrate(&p, 1.0, 0.0, 10).is_err());
+        assert!(integrate(&p, -1.0, 1.0, 1).is_err());
+    }
+
+    #[test]
+    fn tracks_the_closed_form_and_lands_exactly_on_the_end_point() {
+        let p = Params::default();
+        let run = integrate(&p, -7.003, 1.0986122886681098, 201).unwrap();
+        assert_eq!(run.samples.len(), 201);
+        assert_eq!(run.samples.last().unwrap().e_folds, 1.0986122886681098);
+        let worst = run
+            .samples
+            .iter()
+            .map(|s| s.closed_form_residual.abs().max(s.bridge_residual.abs()))
+            .fold(0.0_f64, f64::max);
+        assert!(worst < 1.0e-9, "worst residual {worst}");
+        assert!(run.stats.n_steps > 0 && run.stats.n_rhs >= run.stats.n_steps);
+    }
 }

@@ -8,8 +8,9 @@ cd "$repository_root"
 python_executable="${PYTHON:-.venv/bin/python}"
 if [[ ! -x "$python_executable" ]]; then
   printf 'Missing Python environment: %s\n' "$python_executable" >&2
-  printf 'Create it with: python3 -m venv .venv && %s -m pip install -r requirements.txt\n' \
-    "$python_executable" >&2
+  printf 'Create it with either of:\n' >&2
+  printf '  uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt\n' >&2
+  printf '  python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt\n' >&2
   exit 2
 fi
 
@@ -151,6 +152,9 @@ if grep -Eq '^(warning|error)' logs/verify-fable-cosmo-build.log; then
   printf 'The Rust build emitted a diagnostic.\n' >&2
   exit 1
 fi
+( cd fable_cosmo_rs && cargo test --release ) 2>&1 \
+  | tee logs/verify-fable-cosmo-test.log
+grep -Eq '^test result: ok\. [0-9]+ passed; 0 failed' logs/verify-fable-cosmo-test.log
 ./fable_cosmo_rs/target/release/fable_cosmo_rs --out artifacts/fable \
   2>&1 | tee logs/verify-fable-cosmo-run.log
 grep -q 'SUCCESS: every gated invariant holds.' logs/verify-fable-cosmo-run.log

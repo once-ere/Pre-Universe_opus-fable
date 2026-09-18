@@ -31,7 +31,7 @@ every constant interpolation, and does **not** for a bridge field varying
 transverse to the torsion potential.
 
 The background cosmology of `fableSpinor` is integrated three independent ways
-that agree to $3.6\times10^{-11}$. A single field is pressureless early and
+that agree to $5.5\times10^{-11}$. A single field is pressureless early and
 dark-energy-like today, and its massless torsion-free limit has a flat,
 non-evolving $w=n-1$, exactly $-0.764$ at $n=0.236$.
 
@@ -232,14 +232,15 @@ using $\bigl(s^{-1}+1-2s\bigr)s(1-s)=1-h(s)$.
 
 Three independent routes: closed form; `fable_cosmo_rs` driving the vendored
 pure-Rust SUNDIALS 7.8.0 CVODE (BDF, Newton, dense, $\mathrm{rtol}=10^{-12}$);
-and SciPy Radau. Every comparison is gated and the programs exit nonzero on
-violation.
+and SciPy Radau. The two integrators are compared on all nineteen physical
+columns of the background table, not a hand-picked few. Every comparison is
+gated and the programs exit nonzero on violation.
 
 | quantity | measured | gate |
 |---|---|---|
 | covariant conservation residual | $1.194042\times10^{-15}$ | $10^{-13}$ |
 | integrators versus the closed form | $3.233014\times10^{-11}$ | $10^{-9}$ |
-| SciPy versus CVODE, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $3.612555\times10^{-11}$ | $10^{-10}$ |
+| SciPy versus CVODE, worst of 19 physical columns, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $5.434065\times10^{-11}$ | $10^{-10}$ |
 | $\lvert w_{\mathrm{potential}}-(-0.764)\rvert$ at $\xi=0$ | $0$ | $10^{-12}$ |
 | $\lvert w_{\mathrm{dust}}\rvert$ at $\xi=0$ | $0$ | $10^{-12}$ |
 

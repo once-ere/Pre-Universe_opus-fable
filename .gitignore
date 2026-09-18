@@ -1,5 +1,5 @@
 # =============================================================================
-#  Pre-Universe_with_Claude  --  .gitignore
+#  Pre-Universe_opus-fable  --  .gitignore
 #
 #  Three jobs, in order of importance:
 #
@@ -8,32 +8,30 @@
 #    3. this project's own deliverables stay IN, and are never at the mercy of
 #       an exception list somebody has to remember to update.
 #
-#  Job 3 is why there is no blanket "*.log" rule.  Named provenance logs may be
-#  retained outside the local /logs/ workspace.  Ignoring them by extension and
-#  rescuing them by name would mean every new one is dropped in silence.
-#  Scratch is named instead.  See section 3 for the full reasoning.
+#  Job 3 is why there is no blanket "*.log" or "*.txt" rule. The evidence this
+#  repository publishes -- executed notebooks, figures, JSON summaries, the
+#  integrity manifest -- would be exactly the files such a rule would swallow.
+#  Scratch is named, by the shapes scratch actually takes, so that a stray file
+#  shows up in `git status` as untracked instead of vanishing.
 #
-#  One rule of gitignore worth knowing, because the superseded design depended on
-#  it entirely: a "!" rule cannot rescue a file whose PARENT DIRECTORY is
-#  excluded.  The shipped design does not depend on it.  Its only negations are
-#  !.env.example and !.env.sample in section 1, which negate the FILE pattern
-#  .env.* rather than any directory, so nothing here is at the mercy of
-#  directory ordering.
+#  Every rule below is either anchored with a leading "/" (matches only at the
+#  repository root) or is a pattern no deliverable can match. The one negation,
+#  in section 1, negates a FILE pattern rather than a directory, so nothing here
+#  depends on gitignore's directory-ordering caveat.
+#
+#  The vendored engine at vendor/sundials_rs is a git submodule with its own
+#  .gitignore; rules here do not apply inside it.
 # =============================================================================
 
 
 # -----------------------------------------------------------------------------
-# 1.  SECRETS
-#
-#     Nothing matching these may ever be committed.  Nothing matching them is
-#     present today; these patterns are here so that it stays that way.
+# 1.  SECRETS -- nothing matching these may ever be committed.
 # -----------------------------------------------------------------------------
 
 # environment and dotfile credential stores
 .env
 .env.*
 !.env.example
-!.env.sample
 .netrc
 _netrc
 .npmrc
@@ -57,7 +55,6 @@ id_ed25519*
 
 # anything that names itself a credential
 *credential*
-*credentials*
 *.secret
 *.secrets
 secrets.*
@@ -65,9 +62,8 @@ secrets.*
 *_token
 *.token
 
-# Wolfram and Mathematica licensing material.  A mathpass file holds licence
-# passwords and an activation key is a credential in exactly the way an API
-# token is.  Neither belongs in a public repository.
+# Wolfram licensing material: a mathpass holds licence passwords and an
+# activation key is a credential in exactly the way an API token is.
 mathpass
 *.mathpass
 ActivationKey*
@@ -81,32 +77,12 @@ ActivationKey*
 *.code-workspace
 
 
-# the author's own task specification and working notes.  These are his private
-# working material, not a deliverable, and must not be published.  They were
-# tracked by mistake and were removed from tracking on 2026-09-14; the files
-# stay on disk.
-Pre.txt
-Pre-00.txt
-Gmail - w*equation of state*.pdf
-# ... and every later version of the same notes, whatever date is in the name
-/Pre*.txt
-
-# the plain-text extract of the author's original notebook.  It is GENERATED, by
-# claude-fable/extract/extract_original.wls, and PROVENANCE-00 gives the command.
-# Regenerate it rather than committing it; no .txt belongs in this repository.
-claude-fable/extract/cells_dump.txt
-claude-fable/extract/cells_index.txt
-
 # -----------------------------------------------------------------------------
-# 2.  LITTER
-#
-#     Editor swap files, OS metadata, language caches, build products, and the
-#     duplicate files this project accumulates while the author works.
+# 2.  LITTER -- editor, OS, language and build products.
 # -----------------------------------------------------------------------------
 
 # operating system
 .DS_Store
-.DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
@@ -121,84 +97,55 @@ desktop.ini
 *~
 .*.sw[a-z]
 
-# Python, used here only by the notebook build tool
+# Python: caches and the private virtual environment. requirements.txt is the
+# tracked contract; the environment itself is rebuilt from it.
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
+/.venv/
+/.venv*/
 .ipynb_checkpoints/
 
-# LaTeX build products.  The source and published PDF remain trackable; the
-# build script writes all intermediates under /build/.
-*.aux
-*.toc
-*.out
-*.lof
-*.lot
-*.synctex.gz
-*.fls
-*.fdb_latexmk
-*.bbl
-*.blg
-*.nav
-*.snm
-*.vrb
-*.xdv
+# Rust: Cargo build output. Unanchored on purpose so it also catches
+# fable_cosmo_rs/target/ and any future crate.
+target/
 
-# Wolfram front-end scratch
+# LaTeX intermediates, anchored to the one directory holding .tex sources.
+# scripts/build_documentation.sh writes them to /build/ (below) anyway; these
+# rules catch a pdflatex run started by hand inside docs/. The .tex sources and
+# the compiled .pdf reports ARE tracked.
+/docs/*.aux
+/docs/*.toc
+/docs/*.out
+/docs/*.lof
+/docs/*.lot
+/docs/*.synctex.gz
+/docs/*.fls
+/docs/*.fdb_latexmk
+/docs/*.bbl
+/docs/*.blg
+/docs/*.nav
+/docs/*.snm
+/docs/*.vrb
+/docs/*.xdv
+
+# Wolfram: front-end backups and serialized dumps. The .wls sources and the
+# evaluated .nb notebook ARE tracked.
 *.nb.bak
 *.mx
 .MathematicaHistory
 
-# hand-made duplicates: "EtoExp - Copy.wl", "EtoExp copy 2.wl" and friends
+# duplicates the front end and file managers leave behind
 *[Cc]opy*.wl
 *[Cc]opy*.nb
 *[Cc]opy*.mx
 
-# local backups taken before modifying a file.  These are multi-megabyte
-# duplicates of files that are already in the repository.
-backups/
-
 
 # -----------------------------------------------------------------------------
-# 3.  SCRATCH TEXT AND LOGS
-#
-#     This section used to read
-#
-#         *.txt
-#         *.log
-#         !Pre.txt
-#         !Pre-00.txt
-#         !README*.txt
-#         !LICENSE*.txt
-#         !CHANGELOG*.txt
-#         !claude-fable/**/*.log
-#         !claude-fable/**/*.txt
-#
-#     which was correct but a trap, for two reasons.
-#
-#     First it read as a lie.  Anyone opening this file saw "*.txt", concluded
-#     that .txt files are omitted, and was then surprised to find Pre.txt and
-#     Pre-00.txt in the repository.  The exception that made it true was fifteen
-#     lines further down, and gitignore resolves by LAST match, so you had to
-#     read to the bottom to know what the top meant.
-#
-#     Second, and worse, it failed silently in the one direction that matters.
-#     Ignore-everything-then-rescue means every NEW text or log deliverable is
-#     dropped unless somebody remembers to come back here and add another "!"
-#     line.  Nothing errors.  Nothing appears in git status.  The file is just
-#     quietly not in the commit.  That is the worst failure mode a .gitignore
-#     can have, and this repository is mostly provenance logs, so it was
-#     pointed straight at the thing most likely to be lost.
-#
-#     So the logic is inverted.  Nothing is ignored by extension.  Scratch is
-#     named, by the shapes scratch actually takes.  A stray notes.txt now shows
-#     up as untracked in git status, which is visible and one command to fix,
-#     instead of vanishing.  And adding a new provenance log or specification
-#     needs no edit here at all.
+# 3.  SCRATCH AND REGENERABLE OUTPUT -- named by shape, never by extension.
 # -----------------------------------------------------------------------------
 
-# editor and tool backups, and merge leftovers
+# editor and tool backups, merge leftovers
 *.tmp
 *.temp
 *.bak
@@ -217,35 +164,17 @@ Untitled*
 *-scratch.*
 *[-_]draft.*
 
-# There is deliberately no blanket *.log or *.txt rule, here or anywhere.
-#
-# LaTeX logs are contained by /build/ rather than ignored globally, preserving
-# the option to track an intentionally named provenance log elsewhere.
+# Pre-modification snapshots taken before every edit. Byte copies of tracked
+# files; they must never be published alongside the originals.
+/backups/
 
-# Reproducible command output and generated render products. Source notebooks,
-# figures, tests, Markdown, TeX, and compiled documentation remain trackable.
+# Command output and generated render products. Every gate writes its log here
+# and scripts/build_documentation.sh compiles into /build/. Both are regenerated
+# by the documented commands and are inputs to nothing.
 /logs/
 /build/
 
-# -----------------------------------------------------------------------------
-# Added for the fableSpinor work: Rust build output, pre-modification backups,
-# and the one regenerable bulk data file.
-# -----------------------------------------------------------------------------
-
-# Cargo build output. Unanchored so it also catches the vendored engine's own
-# target/ inside the submodule working tree.
-target/
-
-# Pre-modification snapshots taken before every edit (HARD RULE 0). These are
-# byte copies of tracked files and must never be published alongside them.
-/backups/
-
-# Private virtual environments. The requirements file is the tracked contract.
-.venv/
-/.venv*/
-
-# The background table is 1601 rows of 16-digit reals written by
-# fable_cosmo_rs on every run. The figures, the JSON summaries and the
-# provenance logs that cite numbers from it ARE tracked; the bulk table is
-# regenerated by one documented command and is not an input to anything.
+# The background table: 1601 rows of 16-digit reals rewritten by fable_cosmo_rs
+# on every run. The figures, JSON summaries and provenance pages that quote
+# numbers from it ARE tracked; the bulk table is regenerated by one command.
 /artifacts/fable/fable_background.csv

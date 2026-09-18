@@ -40,11 +40,11 @@ Then get the repository, create the environment, and build the reference
 integrator the notebook drives:
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
 mkdir -p logs
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or, if you prefer the standard library: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 cd fable_cosmo_rs && cargo build --release 2>&1 | tee ../logs/fable_cosmo_build.log && cd ..
 echo "build exit status: ${PIPESTATUS[0]}"
 ```
@@ -52,7 +52,7 @@ echo "build exit status: ${PIPESTATUS[0]}"
 If the repository was cloned without `--recurse-submodules`, repair it first:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 git submodule update --init --recursive
 ```
 
@@ -69,7 +69,7 @@ The notebook is generated from a deterministic builder, so re-running the
 builder always produces the identical file and the repository never churns:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python scripts/build_fable_notebook.py 2>&1 | tee logs/build_fable_notebook.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -78,13 +78,13 @@ Expected output:
 
 ```
 cells written : 21 {'markdown': 11, 'code': 10}
-notebook      : /path/to/Pre-Universe-GPT5_6_Sol/notebooks/fable_spinor_dark_energy.ipynb
+notebook      : /path/to/Pre-Universe_opus-fable/notebooks/fable_spinor_dark_energy.ipynb
 ```
 
 Execute it headlessly, embedding the real outputs in place:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/fable_spinor_dark_energy.ipynb \
   --ExecutePreprocessor.timeout=900 \
@@ -96,8 +96,19 @@ Expected output, with no warnings:
 
 ```
 [NbConvertApp] Converting notebook notebooks/fable_spinor_dark_energy.ipynb to notebook
-[NbConvertApp] Writing 230556 bytes to notebooks/fable_spinor_dark_energy.ipynb
+[NbConvertApp] Writing 231456 bytes to notebooks/fable_spinor_dark_energy.ipynb
 ```
+
+Then strip the one piece of interpreter-specific metadata that execution
+stamps into the file, so the notebook is byte-identical whichever CPython ran it:
+
+```bash
+cd Pre-Universe_opus-fable
+.venv/bin/python scripts/normalize_notebooks.py 2>&1 | tee logs/normalize_notebooks.log
+```
+
+After normalization the file is 231443 bytes; that is the size the integrity
+manifest pins.
 
 Runtime is under a minute. The notebook contains `assert` statements at every
 checkpoint, so execution **fails loudly** if any tolerance is exceeded; a
@@ -111,7 +122,7 @@ This command reports the cell counts, the embedded figures, and the number of
 errors:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -c "
 import json
 from pathlib import Path
@@ -155,7 +166,7 @@ OK
 | 4 | the 256 Clifford words span the full real $16\times16$ algebra; the 128 even words span half | rank printed |
 | 5 | $n-1$ equals the benchmark $-0.764$ with zero difference | printed |
 | 6 | the pure-Rust SUNDIALS CVODE reference runs and passes its own gates | subprocess output embedded |
-| 7 | SciPy Radau agrees with CVODE, and both agree with the closed form | asserted below $10^{-10}$ and $10^{-9}$ |
+| 7 | SciPy Radau agrees with CVODE on all 19 physical columns, and both agree with the closed form | asserted below $10^{-10}$ and $10^{-9}$ |
 | 8 | the sector runs from $w\approx0$ (dark matter) to $w\to n-1$ (dark energy), monotonically, never crossing $-1$ | printed and asserted |
 | 9 | the bridge field moves $w$ at fixed potential index, and the effect vanishes exactly when $\xi=0$ | spreads printed |
 
@@ -170,13 +181,26 @@ rank of the 128 even words    : 128
 ```
 
 ```
-SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|):
-  bilinear        : 2.858131e-11
-  bridge          : 3.612555e-11
-  e_folds         : 0.000000e+00
-  hubble_over_h0  : 1.053052e-11
-  w_fable         : 3.541414e-12
-  w_potential     : 5.396753e-13
+SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|) over 19 columns:
+  bilinear            : 2.858131e-11
+  bridge              : 3.612555e-11
+  bridge_h            : 5.434065e-11
+  deceleration        : 4.167814e-12
+  density_dust        : 2.836593e-11
+  density_fable       : 2.779980e-11
+  density_potential   : 5.071802e-12
+  dilution            : 3.093799e-12
+  e_folds             : 0.000000e+00
+  hubble_over_h0      : 1.053052e-11
+  omega_fable         : 2.376723e-12
+  pressure_dust       : 1.676068e-11
+  pressure_fable      : 1.532891e-11
+  pressure_potential  : 4.542126e-12
+  redshift            : 0.000000e+00
+  scale_factor        : 0.000000e+00
+  w_dust              : 3.949653e-12
+  w_fable             : 3.541414e-12
+  w_potential         : 5.396753e-13
 
 both integrators vs the closed form : 3.233014e-11
 covariant conservation residual     : 1.194042e-15
@@ -208,7 +232,7 @@ move, at a fixed potential index.
 ## 6. Running the underlying tests
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 PYTHONPATH=src .venv/bin/python -m pytest tests/test_fable_spinor.py -q 2>&1 | tee logs/pytest_fable_spinor.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -223,7 +247,7 @@ Expected output:
 To run every test in the repository, including the earlier `gpt5_6` suite:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 PYTHONPATH=src .venv/bin/python -m pytest -q 2>&1 | tee logs/pytest_all.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -235,7 +259,7 @@ echo "exit status: ${PIPESTATUS[0]}"
 ### Live, interactive
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter lab notebooks/fable_spinor_dark_energy.ipynb
 ```
 
@@ -246,7 +270,7 @@ JupyterLab prints an address of the form
 ### Static HTML, no kernel needed
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 mkdir -p build
 .venv/bin/python -m jupyter nbconvert --to html \
   --output-dir build \
@@ -266,7 +290,7 @@ dirties the repository.
 ### The standalone figures
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 python3 -m http.server 8911
 ```
 

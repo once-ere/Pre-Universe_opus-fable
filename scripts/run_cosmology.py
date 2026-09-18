@@ -8,9 +8,9 @@ from pathlib import Path
 import sys
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPOSITORY_ROOT))
+sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
-from src.gpt5_6_cosmology import (
+from gpt5_6_cosmology import (
     UNITE_BAO_CMB_CPL_BENCHMARK,
     UNITE_ONLY_CONSTANT_W_BENCHMARK,
     CosmologyParameters,

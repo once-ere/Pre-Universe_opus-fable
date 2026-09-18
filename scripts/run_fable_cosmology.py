@@ -32,12 +32,17 @@ import fable_spinor as fs
 
 ARTIFACT_DIR = Path("artifacts/fable")
 FIGURE_DIR = ARTIFACT_DIR / "figures"
+PUBLISHED_SUMMARY = ARTIFACT_DIR / "fable_published_summary.json"
 
 #: Pinned so regenerated PDF figures are byte-identical between runs.
 RELEASE_DATETIME = datetime(2026, 9, 17, tzinfo=timezone.utc)
 
+#: The four torsion couplings drawn in the second-mechanism figure; the first
+#: is the control in which the mechanism is switched off.
+SECOND_MECHANISM_XI = ((0.0, "-"), (0.10, "--"), (0.15, "-."), (0.25, ":"))
+
 #: scipy and the Rust reference must agree to this mixed absolute/relative
-#: tolerance, |a - b| / (1 + |b|).
+#: tolerance, |a - b| / (1 + |b|), on every physical column.
 MAX_CROSS_CHECK = 1.0e-10
 #: both integrations must track the closed form to this absolute tolerance.
 MAX_CLOSED_FORM = 1.0e-9
@@ -61,6 +66,11 @@ def _save(figure: plt.Figure, stem: str) -> None:
     plt.close(figure)
 
 
+def _redshift_axis(axis: plt.Axes) -> None:
+    axis.set_xscale("symlog", linthresh=1.0)
+    axis.set_xlabel("redshift $z$")
+
+
 def figure_equation_of_state(background: fs.FableBackground, p: fs.FableParameters) -> None:
     """w of the whole sector and of its two components, against redshift."""
     mask = background.redshift >= -0.5
@@ -73,8 +83,7 @@ def figure_equation_of_state(background: fs.FableBackground, p: fs.FableParamete
               label=r"$w$ of the dust-like part ($\nu/3-1$)")
     axes.axhline(fs.BENCHMARK_W, color="crimson", lw=1.2, ls="-.",
                  label=rf"Unite-only benchmark $w={fs.BENCHMARK_W}$")
-    axes.set_xscale("symlog", linthresh=1.0)
-    axes.set_xlabel("redshift $z$")
+    _redshift_axis(axes)
     axes.set_ylabel("equation of state $w$")
     axes.set_title(
         rf"fableSpinor equation of state ($n={p.index_n:.3f}$, $\xi={p.xi}$)"
@@ -107,11 +116,9 @@ def figure_dark_sector(background: fs.FableBackground, p: fs.FableParameters) ->
 
 def figure_second_mechanism(p: fs.FableParameters) -> None:
     """The torsion mechanism moves w even with the potential index fixed."""
-    frozen = fs.FableParameters(**{**vars(p), "xi": 0.0})
     figure, axes = plt.subplots(1, 2, figsize=(11.0, 4.2))
-    for xi, style in ((0.0, "-"), (0.10, "--"), (0.15, "-."), (0.25, ":")):
-        variant = fs.FableParameters(**{**vars(p), "xi": xi})
-        solved = fs.solve_background(variant)
+    for xi, style in SECOND_MECHANISM_XI:
+        solved = fs.solve_background(p.with_xi(xi))
         mask = solved.redshift >= -0.5
         axes[0].plot(solved.redshift[mask], solved.w_potential[mask], style,
                      label=rf"$\xi={xi}$")
@@ -122,15 +129,14 @@ def figure_second_mechanism(p: fs.FableParameters) -> None:
         (axes[1], "dust-like part", 0.0),
     ):
         panel.axhline(target, color="crimson", lw=1.0, alpha=0.7)
-        panel.set_xscale("symlog", linthresh=1.0)
-        panel.set_xlabel("redshift $z$")
+        _redshift_axis(panel)
         panel.set_ylabel("$w$")
         panel.set_title(f"Second mechanism: {title}")
         panel.grid(alpha=0.3)
         panel.legend(fontsize=8)
     figure.suptitle(
         "Torsion of the gpt-5.6_bridge shifts $w$ at fixed potential index "
-        rf"$n={frozen.index_n:.3f}$"
+        rf"$n={p.index_n:.3f}$"
     )
     _save(figure, "fable_second_mechanism")
 
@@ -141,16 +147,14 @@ def figure_expansion(background: fs.FableBackground) -> None:
     z = background.redshift[mask]
     figure, axes = plt.subplots(1, 2, figsize=(11.0, 4.2))
     axes[0].plot(z, background.hubble_over_h0[mask], lw=2.0)
-    axes[0].set_xscale("symlog", linthresh=1.0)
+    _redshift_axis(axes[0])
     axes[0].set_yscale("log")
-    axes[0].set_xlabel("redshift $z$")
     axes[0].set_ylabel("$H/H_0$")
     axes[0].set_title("Expansion history")
     axes[0].grid(alpha=0.3, which="both")
     axes[1].plot(z, background.deceleration[mask], lw=2.0)
     axes[1].axhline(0.0, color="crimson", lw=1.0)
-    axes[1].set_xscale("symlog", linthresh=1.0)
-    axes[1].set_xlabel("redshift $z$")
+    _redshift_axis(axes[1])
     axes[1].set_ylabel("$q$")
     axes[1].set_title("Deceleration parameter")
     axes[1].grid(alpha=0.3)
@@ -200,6 +204,10 @@ def figure_cross_check(background: fs.FableBackground,
     _save(figure, "fable_cross_check")
 
 
+def _max_abs(*arrays: np.ndarray) -> float:
+    return max(float(np.max(np.abs(a))) for a in arrays)
+
+
 def main() -> int:
     parameters = fs.FableParameters()
     parameters.validate()
@@ -207,36 +215,25 @@ def main() -> int:
     print("fableSpinor background — reference and cross-check")
     print("=" * 66)
 
-    summary = fs.run_reference(ARTIFACT_DIR, repository_root=REPOSITORY_ROOT)
-    print(summary["stdout"].rstrip())
+    run = fs.run_reference(ARTIFACT_DIR, repository_root=REPOSITORY_ROOT)
+    print(run.stdout.rstrip())
     print("=" * 66)
 
-    reference = fs.load_reference_csv(
-        REPOSITORY_ROOT / ARTIFACT_DIR / "fable_background.csv"
-    )
+    reference = run.table()
     background = fs.solve_background(parameters)
 
     differences = fs.compare_to_reference(background, reference)
     max_cross_check = max(differences.values())
-    max_closed_form = max(
-        float(np.max(np.abs(background.closed_form_residual))),
-        float(np.max(np.abs(reference["closed_form_residual"]))),
-    )
-    max_continuity = max(
-        float(np.max(np.abs(background.continuity_residual))),
-        float(np.max(np.abs(reference["continuity_residual"]))),
-    )
+    max_closed_form = _max_abs(background.closed_form_residual, reference["closed_form_residual"])
+    max_continuity = _max_abs(background.continuity_residual, reference["continuity_residual"])
 
-    benchmark = fs.FableParameters(**{**vars(parameters), "xi": 0.0})
-    benchmark_solution = fs.solve_background(benchmark)
-    benchmark_error = float(
-        np.max(np.abs(benchmark_solution.w_potential - fs.BENCHMARK_W))
-    )
-    dust_error = float(np.max(np.abs(benchmark_solution.w_dust)))
+    benchmark_solution = fs.solve_background(parameters.torsion_free())
+    benchmark_error = _max_abs(benchmark_solution.w_potential - fs.BENCHMARK_W)
+    dust_error = _max_abs(benchmark_solution.w_dust)
 
-    print("SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|):")
+    print(f"SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|) over {len(differences)} columns:")
     for name, value in sorted(differences.items()):
-        print(f"  {name:<18}: {value:.6e}")
+        print(f"  {name:<20}: {value:.6e}")
     print()
     print(f"max |closed-form residual| : {max_closed_form:.6e}  (gate {MAX_CLOSED_FORM:.1e})")
     print(f"max |continuity residual|  : {max_continuity:.6e}  (gate {MAX_CONTINUITY:.1e})")
@@ -251,13 +248,14 @@ def main() -> int:
     print()
     print(f"figures written to {FIGURE_DIR}")
 
-    today = summary["today"]
+    summary = run.summary
     published = {
         "engine": summary["engine"],
         "method": summary["method"],
         "cross_check_method": "scipy.integrate.solve_ivp Radau, rtol=1e-12, atol=1e-14",
+        "cross_check_columns": list(fs.PHYSICAL_COLUMNS),
         "parameters": summary["parameters"],
-        "today": today,
+        "today": summary["today"],
         "gates": {
             "max_cross_check_difference": max_cross_check,
             "max_closed_form_residual": max_closed_form,
@@ -273,21 +271,19 @@ def main() -> int:
         },
         "cvode": summary["cvode"],
     }
-    out = REPOSITORY_ROOT / ARTIFACT_DIR / "fable_published_summary.json"
+    out = REPOSITORY_ROOT / PUBLISHED_SUMMARY
     out.write_text(json.dumps(published, indent=2) + "\n", encoding="utf-8")
-    print(f"summary written to {out.relative_to(REPOSITORY_ROOT)}")
+    print(f"summary written to {PUBLISHED_SUMMARY}")
 
-    failures = []
-    if not max_cross_check <= MAX_CROSS_CHECK:
-        failures.append(f"cross-check {max_cross_check:.3e}")
-    if not max_closed_form <= MAX_CLOSED_FORM:
-        failures.append(f"closed form {max_closed_form:.3e}")
-    if not max_continuity <= MAX_CONTINUITY:
-        failures.append(f"continuity {max_continuity:.3e}")
-    if not benchmark_error <= MAX_BENCHMARK:
-        failures.append(f"benchmark {benchmark_error:.3e}")
-    if not dust_error <= MAX_BENCHMARK:
-        failures.append(f"dust {dust_error:.3e}")
+    # `not (x <= limit)` rather than `x > limit` so a NaN fails the gate.
+    checks = (
+        ("cross-check", max_cross_check, MAX_CROSS_CHECK),
+        ("closed form", max_closed_form, MAX_CLOSED_FORM),
+        ("continuity", max_continuity, MAX_CONTINUITY),
+        ("benchmark", benchmark_error, MAX_BENCHMARK),
+        ("dust", dust_error, MAX_BENCHMARK),
+    )
+    failures = [f"{name} {value:.3e}" for name, value, limit in checks if not value <= limit]
     if failures:
         print("\nFAILED gates: " + "; ".join(failures))
         return 1

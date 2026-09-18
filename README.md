@@ -27,36 +27,58 @@ claim that a new fundamental particle has been discovered.
 
 ## Start here
 
-- [Complete student guide](docs/gpt5_6_cosmology.md)
-- [Dark-sector relationships and conclusions](docs/gpt5_6_dark_sector_relationships.md)
-- [Compiled scientific report](docs/gpt5_6_cosmology.pdf)
-- [Compiled dark-sector technical note](docs/gpt5_6_dark_sector_relationships.pdf)
-- [Executable cosmology notebook](notebooks/gpt5_6_cosmology.ipynb)
-- [Cosmology source](src/gpt5_6_cosmology.py)
-- [Numerical summary](artifacts/gpt5_6_summary.json)
-- [Build and source provenance](PROVENANCE.md)
+The current work:
+
+- [Complete student guide to fableSpinor](docs/STUDENT-GUIDE-FABLESPINOR.md) — bare machine to rendered graphs
+- [Compiled scientific report](docs/fable_spinor.pdf) and its [Markdown twin](docs/fable_spinor.md)
+- [Executable fableSpinor notebook](notebooks/fable_spinor_dark_energy.ipynb)
+- [Evaluated gpt-5.6_bridge Mathematica notebook](notebooks/gpt-5.6_bridge.nb)
+- [fableSpinor source](src/fable_spinor.py) and the [pure-Rust SUNDIALS reference integrator](fable_cosmo_rs/)
+- [Published numerical summary](artifacts/fable/fable_published_summary.json)
+
+The retained v1.0.0 `gpt5_6` work:
+
+- [gpt5_6 student guide](docs/gpt5_6_cosmology.md) and [compiled report](docs/gpt5_6_cosmology.pdf)
+- [Dark-sector relationships note](docs/gpt5_6_dark_sector_relationships.md) and [PDF](docs/gpt5_6_dark_sector_relationships.pdf)
+- [Executable gpt5_6 notebook](notebooks/gpt5_6_cosmology.ipynb), [source](src/gpt5_6_cosmology.py), [summary](artifacts/gpt5_6_summary.json)
+- [Build and source provenance of the v1.0.0 release](PROVENANCE.md)
 
 ## Quick verification
 
+Clone with submodules — the pure-Rust SUNDIALS engine lives in one — and create
+the Python environment. On Debian and Ubuntu the system Python refuses
+system-wide installs, so use either `uv` (no administrator rights) or `venv`:
+
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pytest -q
-.venv/bin/python scripts/run_cosmology.py
-.venv/bin/python scripts/build_cosmology_notebook.py
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
-  notebooks/gpt5_6_cosmology.ipynb --ExecutePreprocessor.timeout=180 \
-  --ExecutePreprocessor.record_timing=False
-bash scripts/build_documentation.sh
-wolframscript -file wolfram/gpt56_bridge.wls
-wolframscript -file scripts/run_gpt56_notebook.wls
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
+mkdir -p logs build
 ```
 
-The expected cosmology result is 10 passing tests and three numerical invariant
-errors below `2e-9`. The Wolfram source and generated notebook each report 36
-passing tests, zero failures, and no messages. The documentation build publishes
-the 11-page scientific report and the 7-page dark-sector technical note without
-TeX diagnostics.
+Then, one gate at a time:
+
+```bash
+.venv/bin/python -m pytest -q                                   # 45 tests
+(cd fable_cosmo_rs && cargo build --release && cargo test --release)   # 0 warnings, 20 tests
+./fable_cosmo_rs/target/release/fable_cosmo_rs --out artifacts/fable   # reference integration
+.venv/bin/python scripts/run_fable_cosmology.py                 # three-way cross-check + figures
+.venv/bin/python scripts/run_cosmology.py > /dev/null           # gpt5_6 artifacts
+bash scripts/build_documentation.sh                             # three PDF reports
+wolframscript -file wolfram/fable_spinor.wls                    # 30 assertions
+wolframscript -file wolfram/gpt56_bridge_dynamic.wls            # 17 assertions
+wolframscript -file wolfram/gpt56_bridge.wls                    # 36 assertions
+wolframscript -file scripts/execute_gpt56_notebook.wls          # evaluates the .nb IN PLACE
+.venv/bin/python scripts/audit_notebooks.py                     # 3 of 3 notebooks executed
+```
+
+Expected: 45 Python tests and 20 Rust tests pass; the three Wolfram sources
+report 30, 17 and 36 passing assertions with zero failures and no messages; the
+Mathematica notebook stores 5 output cells for 5 input cells; the reference
+integrator and the cross-check both end in `SUCCESS`; and the documentation
+build publishes the 9-page fableSpinor report, the 11-page gpt5_6 report and
+the 7-page dark-sector note without TeX diagnostics.
 
 ---
 
@@ -277,17 +299,21 @@ and [docs/PROVENANCE-FABLESPINOR-NOTEBOOK.md](docs/PROVENANCE-FABLESPINOR-NOTEBO
 
 The background is integrated **three independent ways** — a closed-form solution
 derived by hand, the pure-Rust SUNDIALS 7.8.0 CVODE reference, and SciPy Radau —
-and every comparison is gated, with nonzero exit on violation.
+and every comparison is gated, with nonzero exit on violation. The two
+integrators are compared on **all nineteen physical columns** of the background
+table, not a hand-picked few.
 
 | quantity | measured | gate |
 |---|---|---|
 | covariant conservation residual | $1.194042\times10^{-15}$ | $10^{-13}$ |
 | integrators versus the closed form | $3.233014\times10^{-11}$ | $10^{-9}$ |
-| SciPy versus CVODE, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $3.612555\times10^{-11}$ | $10^{-10}$ |
+| SciPy versus CVODE, worst of 19 columns, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $5.434065\times10^{-11}$ | $10^{-10}$ |
 | $\lvert w_{\mathrm{potential}}-(-0.764)\rvert$ at $\xi=0$ | $0$ | $10^{-12}$ |
 | $\lvert w_{\mathrm{dust}}\rvert$ at $\xi=0$ | $0$ | $10^{-12}$ |
 
-The last two rows are **exact**, not merely small.
+The last two rows are **exact**, not merely small. The Rust reference is itself
+unit-tested (20 tests), and its CSV, JSON and console output are byte-identical
+before and after the refactor that introduced those tests.
 
 ---
 
@@ -310,21 +336,30 @@ command, and the expected output, and never redirects you to another document.
 ## Reproducing everything with one command
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 mkdir -p logs build
 bash scripts/verify_all.sh 2>&1 | tee logs/verify_all.log
 ```
 
-That runs all twelve gate stages: Python tests, numerical artifacts, both
-Jupyter notebooks built and executed, structured invariant checks, hygiene,
-three LaTeX reports, the Wolfram source and generated Mathematica notebook, the
-required deliverables, the fableSpinor symbolic proofs, the pure-Rust SUNDIALS
-reference integration, the three-way cross-check, and the fableSpinor notebook,
-report and deliverables. The final line is
-`All repository verification gates passed.`
+That runs all thirteen gate stages: Python tests; gpt5_6 numerical artifacts;
+the gpt5_6 notebook built, executed and normalized; structured invariant
+checks; hygiene; three LaTeX reports; the Wolfram source and the Mathematica
+notebook **evaluated in place**; the required deliverables and the integrity
+manifest; the fableSpinor symbolic proofs; the pure-Rust SUNDIALS reference
+build, unit tests and integration; the three-way cross-check; the fableSpinor
+notebook, report and deliverables; and finally an audit that every notebook,
+Jupyter and Mathematica alike, is fully executed with zero errors. The final
+line is `All repository verification gates passed.`
+
+Two further gates are run before anything is pinned or pushed:
+
+```bash
+.venv/bin/python scripts/determinism_gate.py    # every artifact byte-identical across two full runs
+sha256sum -c artifacts/SHA256SUMS                # every tracked file matches the manifest
+```
 
 ## What is not claimed
 

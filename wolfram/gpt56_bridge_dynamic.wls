@@ -29,9 +29,12 @@ gCanonical = Simplify[
   frameCanonical . eta4488 . Transpose[frameCanonical], assumptions];
 inverseGCanonical = Simplify[Inverse[gCanonical], assumptions];
 
+(* A literal 0 needs no FullSimplify; AllTrue and AnyTrue stop at the first
+   decisive element. Truth values are unchanged; only work is saved. *)
+zeroQ[0] := True;
 zeroQ[e_] := TrueQ[FullSimplify[e == 0, assumptions]];
-zeroArrayQ[e_] := And @@ (zeroQ /@ Flatten[e]);
-nonzeroWitnessQ[e_] := AnyTrue[Flatten[e], ! zeroQ[#] &];
+zeroArrayQ[e_] := AllTrue[Flatten[{e}], zeroQ];
+nonzeroWitnessQ[e_] := AnyTrue[Flatten[{e}], ! zeroQ[#] &];
 
 christoffelFromMetric[metric_, inverseMetric_] := Simplify[
   Table[
@@ -93,18 +96,29 @@ torsionTensor[affine_] := Simplify[
     {rho, dimension}, {mu, dimension}, {nu, dimension}],
   assumptions];
 
-curvatureTensor[affine_] := Table[
-  Simplify[
-    D[affine[[rho, nu, sigma]], coordinates[[mu]]] -
-    D[affine[[rho, mu, sigma]], coordinates[[nu]]] +
-    Sum[
-      affine[[rho, mu, lambda]] affine[[lambda, nu, sigma]] -
-      affine[[rho, nu, lambda]] affine[[lambda, mu, sigma]],
-      {lambda, dimension}],
-    assumptions],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}];
+(* Every four-index object below is antisymmetric in its last index pair by
+   the form of its defining expression, so only the mu < nu entries are ever
+   simplified; the rest are filled by antisymmetry. This halves the dominant
+   cost of the file without changing a single component. *)
+antisymmetricInLastPair[component_, n_] := Module[{upper},
+  upper = Table[
+    If[mu < nu, component[i, j, mu, nu], 0],
+    {i, n}, {j, n}, {mu, n}, {nu, n}];
+  upper - Transpose[upper, {1, 2, 4, 3}]];
 
-covariantExteriorDerivative[base_, difference_] := Table[
+curvatureComponent[affine_, rho_, sigma_, mu_, nu_] := Simplify[
+  D[affine[[rho, nu, sigma]], coordinates[[mu]]] -
+  D[affine[[rho, mu, sigma]], coordinates[[nu]]] +
+  Sum[
+    affine[[rho, mu, lambda]] affine[[lambda, nu, sigma]] -
+    affine[[rho, nu, lambda]] affine[[lambda, mu, sigma]],
+    {lambda, dimension}],
+  assumptions];
+
+curvatureTensor[affine_] := antisymmetricInLastPair[
+  curvatureComponent[affine, #1, #2, #3, #4] &, dimension];
+
+covariantExteriorDerivativeComponent[base_, difference_, rho_, sigma_, mu_, nu_] :=
   Simplify[
     D[difference[[rho, nu, sigma]], coordinates[[mu]]] -
     D[difference[[rho, mu, sigma]], coordinates[[nu]]] +
@@ -114,17 +128,21 @@ covariantExteriorDerivative[base_, difference_] := Table[
       base[[rho, nu, lambda]] difference[[lambda, mu, sigma]] -
       difference[[rho, nu, lambda]] base[[lambda, mu, sigma]],
       {lambda, dimension}],
-    assumptions],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}];
+    assumptions];
 
-connectionWedge[difference_] := Table[
-  Simplify[
-    Sum[
-      difference[[rho, mu, lambda]] difference[[lambda, nu, sigma]] -
-      difference[[rho, nu, lambda]] difference[[lambda, mu, sigma]],
-      {lambda, dimension}],
-    assumptions],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}];
+covariantExteriorDerivative[base_, difference_] := antisymmetricInLastPair[
+  covariantExteriorDerivativeComponent[base, difference, #1, #2, #3, #4] &,
+  dimension];
+
+connectionWedgeComponent[difference_, rho_, sigma_, mu_, nu_] := Simplify[
+  Sum[
+    difference[[rho, mu, lambda]] difference[[lambda, nu, sigma]] -
+    difference[[rho, nu, lambda]] difference[[lambda, mu, sigma]],
+    {lambda, dimension}],
+  assumptions];
+
+connectionWedge[difference_] := antisymmetricInLastPair[
+  connectionWedgeComponent[difference, #1, #2, #3, #4] &, dimension];
 
 (* The totally antisymmetric (axial) part of the fully lowered torsion. *)
 lowerTorsion[metric_, torsion_] := Simplify[

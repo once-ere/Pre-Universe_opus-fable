@@ -292,8 +292,11 @@ secondMechanismSurvivesWithoutPotential = Simplify[
   secondMechanismSensitivity /. couplingLambda -> 0
 ];
 
+zeroQ[0] := True;
 zeroQ[expression_] := TrueQ[Simplify[expression == 0, cosmologyAssumptions]];
-zeroArrayQ[expression_] := And @@ (TrueQ[# == 0] & /@ Flatten[expression]);
+(* Exact integer and rational matrices: an element is zero iff it is the
+   literal 0, so no simplification is involved. *)
+zeroArrayQ[expression_] := AllTrue[Flatten[{expression}], TrueQ[# == 0] &];
 
 (* ------------------------------------------------------------------ *)
 (* 8. Verification report.                                             *)

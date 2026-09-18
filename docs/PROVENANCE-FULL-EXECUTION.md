@@ -340,7 +340,8 @@ of the suite asserts the alt text of all four.
 | Wolfram assertions, `wolfram/fable_spinor.wls` | 30 passed, 0 failed |
 | Wolfram assertions, `wolfram/gpt56_bridge_dynamic.wls` | 17 passed, 0 failed |
 | **Wolfram assertions, total** | **83 passed, 0 failed** |
-| Python tests | 37 passed |
+| Python tests | 45 passed |
+| Rust unit tests, `fable_cosmo_rs` | 20 passed |
 | Wolfram messages raised, any cell | 0 |
 | Jupyter cell errors | 0 |
 | verification stages | 13 of 13 passed |

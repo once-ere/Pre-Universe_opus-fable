@@ -54,7 +54,7 @@ obstruction two-form vanishes: it vanishes for the Levi-Civita connection, for
 the Weitzenb\"ock connection and for every constant interpolation between them,
 and it does \emph{not} vanish for a bridge field varying transverse to the
 torsion potential. Finally we derive the background cosmology of \fableSpinor{},
-integrate it three independent ways that agree to $3.6\times10^{-11}$, and find
+integrate it three independent ways that agree to $5.5\times10^{-11}$, and find
 a single field that is pressureless at early times and dark-energy-like today,
 whose massless torsion-free limit has a flat, non-evolving equation of state
 $w=n-1$, exactly $-0.764$ at $n=0.236$.
@@ -330,8 +330,9 @@ using the identity $\bigl(s^{-1}+1-2s\bigr)s(1-s)=1-h(s)$.
 The background is integrated three independent ways: in closed form; by
 \texttt{fable\_cosmo\_rs}, a pure-Rust program driving the vendored pure-Rust
 SUNDIALS 7.8.0 CVODE solver (BDF, Newton, dense, $\mathrm{rtol}=10^{-12}$); and
-by SciPy's Radau method. Every comparison is gated and the programs exit nonzero
-on violation.
+by SciPy's Radau method. The two integrators are compared on all nineteen
+physical columns of the background table, not a hand-picked few. Every
+comparison is gated and the programs exit nonzero on violation.
 
 \begin{table}[htbp]
 \centering
@@ -341,7 +342,7 @@ quantity & measured & gate \\
 \midrule
 covariant conservation residual & $1.194042\times10^{-15}$ & $10^{-13}$ \\
 integrators versus the closed form & $3.233014\times10^{-11}$ & $10^{-9}$ \\
-SciPy versus CVODE, $|a-b|/(1+|b|)$ & $3.612555\times10^{-11}$ & $10^{-10}$ \\
+SciPy vs CVODE, worst of 19 columns, $|a-b|/(1+|b|)$ & $5.434065\times10^{-11}$ & $10^{-10}$ \\
 $|w_{\mathrm{potential}}-(-0.764)|$ at $\xi=0$ & $0$ & $10^{-12}$ \\
 $|w_{\mathrm{dust}}|$ at $\xi=0$ & $0$ & $10^{-12}$ \\
 \bottomrule

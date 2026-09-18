@@ -86,10 +86,10 @@ CELLS.append(md("""
 From the repository root, in a terminal:
 
 ```
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or, if you prefer the standard library: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 cd fable_cosmo_rs && cargo build --release && cd ..
 .venv/bin/python -m jupyter lab notebooks/fable_spinor_dark_energy.ipynb
 ```
@@ -107,9 +107,11 @@ The Rust build is **required**, not optional: the helper that runs it raises
 """))
 
 CELLS.append(code("""
-import sys, subprocess
+import sys
 from pathlib import Path
 
+# The kernel starts in notebooks/ under JupyterLab and nbconvert alike; walk
+# up to the repository root, which is the directory that contains src/.
 ROOT = Path.cwd()
 if not (ROOT / "src" / "fable_spinor.py").exists():
     ROOT = ROOT.parent
@@ -119,7 +121,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import fable_spinor as fs
 
-print("repository root :", ROOT)
+# Nothing machine- or checkout-specific is printed here: an absolute path, or
+# even the clone's directory name, would make this cell's output differ from
+# machine to machine and defeat the reproducibility gate.
+print("module imported :", Path(fs.__file__).name)
 print("numpy           :", np.__version__)
 print("spinor dimension:", fs.SPINOR_DIMENSION)
 print("tangent metric  :", np.diag(fs.ETA_4488).astype(int).tolist())
@@ -203,7 +208,7 @@ irreducible 16.
 """))
 
 CELLS.append(code("""
-spin_generators = np.array([fs.LORENTZ[a, b] for a in range(8) for b in range(a + 1, 8)])
+spin_generators = fs.independent_lorentz_generators()
 
 pin_commutant = fs.commutant_dimension(fs.GAMMA)
 spin_commutant = fs.commutant_dimension(spin_generators)
@@ -288,8 +293,8 @@ them is violated.
 """))
 
 CELLS.append(code("""
-summary = fs.run_reference("artifacts/fable", repository_root=ROOT)
-print(summary["stdout"].rstrip())
+run = fs.run_reference("artifacts/fable", repository_root=ROOT)
+print(run.stdout.rstrip())
 """))
 
 CELLS.append(md("""
@@ -306,13 +311,13 @@ s(N)=\\frac{s_0e^{\\gamma N}}{1-s_0+s_0e^{\\gamma N}} .$$
 """))
 
 CELLS.append(code("""
-reference = fs.load_reference_csv(ROOT / "artifacts/fable/fable_background.csv")
+reference = run.table()
 background = fs.solve_background(p)
 
 differences = fs.compare_to_reference(background, reference)
-print("SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|):")
+print(f"SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|) over {len(differences)} columns:")
 for name, value in sorted(differences.items()):
-    print(f"  {name:<16}: {value:.6e}")
+    print(f"  {name:<20}: {value:.6e}")
 
 closed_form = max(float(np.abs(background.closed_form_residual).max()),
                   float(np.abs(reference["closed_form_residual"]).max()))
@@ -339,8 +344,7 @@ approximately $0$ to approximately $n-1$ without anything being added by hand.
 """))
 
 CELLS.append(code("""
-wide = fs.solve_background(fs.FableParameters(**{**vars(p), "xi": 0.0}),
-                           n_start=-12.0, n_end=6.0, samples=2001)
+wide = fs.solve_background(p.torsion_free(), n_start=-12.0, n_end=6.0, samples=2001)
 print(f"w of the whole sector at a = {wide.scale_factor[0]:.3e} : {wide.w_fable[0]:+.6f}   (dust is 0)")
 print(f"w of the whole sector today               : {np.interp(0.0, wide.e_folds, wide.w_fable):+.6f}")
 print(f"w of the whole sector at a = {wide.scale_factor[-1]:.3e} : {wide.w_fable[-1]:+.6f}   (target {fs.BENCHMARK_W})")
@@ -389,7 +393,7 @@ Switch $\\xi$ off and the effect disappears exactly; that is the control.
 CELLS.append(code("""
 fig, ax = plt.subplots(1, 2, figsize=(12.0, 4.2))
 for xi, style in ((0.0, "-"), (0.10, "--"), (0.15, "-."), (0.25, ":")):
-    variant = fs.solve_background(fs.FableParameters(**{**vars(p), "xi": xi}))
+    variant = fs.solve_background(p.with_xi(xi))
     m = variant.redshift >= -0.5
     ax[0].plot(variant.redshift[m], variant.w_potential[m], style, label=rf"$\\xi={xi}$")
     ax[1].plot(variant.redshift[m], variant.w_dust[m], style, label=rf"$\\xi={xi}$")
@@ -403,8 +407,8 @@ for panel, title in ((ax[0], "potential part"), (ax[1], "dust-like part")):
     panel.grid(alpha=0.3); panel.legend(fontsize=8)
 plt.tight_layout(); plt.show()
 
-frozen = fs.solve_background(fs.FableParameters(**{**vars(p), "xi": 0.0}))
-active = fs.solve_background(fs.FableParameters(**{**vars(p), "xi": 0.25}))
+frozen = fs.solve_background(p.torsion_free())
+active = fs.solve_background(p.with_xi(0.25))
 print("spread of w_potential, xi = 0.00 :", float(np.ptp(frozen.w_potential)))
 print("spread of w_potential, xi = 0.25 :", float(np.ptp(active.w_potential)))
 print("spread of w_dust,      xi = 0.00 :", float(np.ptp(frozen.w_dust)))

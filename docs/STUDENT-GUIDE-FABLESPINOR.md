@@ -88,15 +88,15 @@ The `--recurse-submodules` flag is **not optional**: it fetches the pure-Rust
 SUNDIALS solver that does the integration.
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
 mkdir -p logs
 ```
 
 If you already cloned it the wrong way, repair it in place:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 git submodule update --init --recursive
 ```
 
@@ -127,16 +127,16 @@ virtual environment is a private folder of packages that cannot break your
 system:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or, if you prefer the standard library:
+# python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 ```
 
 Check it worked:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -c "import numpy, scipy, matplotlib; print(numpy.__version__, scipy.__version__, matplotlib.__version__)"
 ```
 
@@ -148,7 +148,7 @@ This compiles the SUNDIALS engine and the cosmology program. The first build
 takes a few minutes; later builds take seconds.
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol/fable_cosmo_rs
+cd Pre-Universe_opus-fable/fable_cosmo_rs
 cargo build --release 2>&1 | tee ../logs/fable_cosmo_build.log
 echo "exit status: ${PIPESTATUS[0]}"
 cd ..
@@ -253,7 +253,7 @@ and you will run it in Part C.
 ### C1. Run the reference solver
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 ./fable_cosmo_rs/target/release/fable_cosmo_rs --out artifacts/fable 2>&1 | tee logs/fable_cosmo_run.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -279,7 +279,7 @@ The program checks itself and refuses to exit successfully otherwise.
 ### C2. Cross-check it with a completely different solver
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python scripts/run_fable_cosmology.py 2>&1 | tee logs/run_fable_cosmology.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -299,10 +299,10 @@ closed-form answer. Agreement of all three is strong evidence.
 ### C3. Prove the irreducibility yourself
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 PYTHONPATH=src .venv/bin/python -c "
-import numpy as np, fable_spinor as fs
-spin = np.array([fs.LORENTZ[a, b] for a in range(8) for b in range(a + 1, 8)])
+import fable_spinor as fs
+spin = fs.independent_lorentz_generators()
 print('commutant of Pin(4,4)  :', fs.commutant_dimension(fs.GAMMA), '-> irreducible')
 print('commutant of Spin(4,4) :', fs.commutant_dimension(spin), '-> reducible, 8+8')
 print('rank of 256 words      :', fs.word_span_rank())
@@ -322,7 +322,7 @@ rank of 128 even words : 128
 ### C4. Watch the current vanish
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 PYTHONPATH=src .venv/bin/python -c "
 import numpy as np, fable_spinor as fs
 rng = np.random.default_rng(20260917)
@@ -343,12 +343,12 @@ trial 2:  S = -7.052059   max|current| = 0.0e+00
 ### C5. Run the control experiment for the second mechanism
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 PYTHONPATH=src .venv/bin/python -c "
 import numpy as np, fable_spinor as fs
-base = vars(fs.FableParameters())
+p = fs.FableParameters()
 for xi in (0.0, 0.10, 0.25):
-    sol = fs.solve_background(fs.FableParameters(**{**base, 'xi': xi}))
+    sol = fs.solve_background(p.with_xi(xi))
     print(f'xi = {xi:4.2f}   spread of w_potential = {np.ptp(sol.w_potential):.6f}   spread of w_dust = {np.ptp(sol.w_dust):.6f}')
 "
 ```
@@ -363,20 +363,33 @@ xi = 0.25   spread of w_potential = 0.012249   spread of w_dust = 0.051903
 
 ### C6. Run the tests
 
+The Python suite (`pytest.ini` puts `src/` on the import path, so no
+`PYTHONPATH` is needed here):
+
 ```bash
-cd Pre-Universe-GPT5_6_Sol
-PYTHONPATH=src .venv/bin/python -m pytest -q 2>&1 | tee logs/pytest_all.log
+cd Pre-Universe_opus-fable
+.venv/bin/python -m pytest -q 2>&1 | tee logs/pytest_all.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
 
-Expected: `37 passed`.
+Expected: `45 passed`.
+
+The Rust solver's own unit tests:
+
+```bash
+cd Pre-Universe_opus-fable/fable_cosmo_rs
+cargo test --release 2>&1 | tee ../logs/cargo_test.log
+cd ..
+```
+
+Expected, on the last line: `test result: ok. 20 passed; 0 failed`.
 
 ### C7. Optional — the symbolic proofs
 
 Only if you have Mathematica or the Wolfram Engine installed and activated:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 wolframscript -code '{$Version, $LicenseType}'
 wolframscript -file wolfram/fable_spinor.wls 2>&1 | tee logs/fable_spinor.log
 wolframscript -file wolfram/gpt56_bridge_dynamic.wls 2>&1 | tee logs/gpt56_bridge_dynamic.log
@@ -394,7 +407,7 @@ unlicensed, skip this step: nothing in Parts A to C depends on it.
 ### D1. The notebook, live
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter lab notebooks/fable_spinor_dark_energy.ipynb
 ```
 
@@ -409,7 +422,7 @@ Stop the server by pressing `Ctrl-C` twice in the terminal.
 If you just want to read it without running a kernel:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 mkdir -p build
 .venv/bin/python -m jupyter nbconvert --to html \
   --output-dir build \
@@ -423,7 +436,7 @@ Open <http://127.0.0.1:8911/fable_spinor_dark_energy.html>. Stop with `Ctrl-C`.
 ### D3. The figures
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 python3 -m http.server 8911
 ```
 

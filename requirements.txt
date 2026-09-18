@@ -1,6 +1,14 @@
+# Scientific stack for src/, tests/ and the notebooks.
 numpy==2.5.3
 scipy==1.18.1
 matplotlib==3.11.2
-jupyter==1.1.1
+
+# Notebook authoring, execution and rendering. nbformat is imported directly by
+# scripts/normalize_notebooks.py; the jupyter metapackage supplies `jupyter lab`.
+nbformat==5.11.1
 nbconvert==7.17.1
+ipykernel==7.3.0
+jupyter==1.1.1
+
+# Test runner.
 pytest==9.1.1

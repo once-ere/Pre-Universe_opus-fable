@@ -131,7 +131,14 @@ class BackgroundSolution:
 
 
 def dirac_gamma_matrices_16() -> tuple[np.ndarray, ...]:
-    """Return Gamma^mu = I_4 (flavor) tensor gamma^mu in signature (+---)."""
+    """Return Gamma^mu = I_4 (flavor) tensor gamma^mu in signature (+---).
+
+    This is a four-flavour multiplet of the ordinary 3+1 Dirac spinor: a direct
+    sum of four 4-component spinors. It is retained as the construction the
+    v1.0.0 release used. It is NOT an irreducible representation of the real
+    O(4,4); that object is ``fable_spinor.GAMMA``, whose Pin(4,4) commutant is
+    one-dimensional.
+    """
 
     identity2 = np.eye(2, dtype=np.complex128)
     zero2 = np.zeros((2, 2), dtype=np.complex128)
@@ -427,16 +434,25 @@ def save_figures(
 ) -> list[Path]:
     output_path = Path(output_directory)
     output_path.mkdir(parents=True, exist_ok=True)
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Serif",
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.grid": True,
-            "grid.alpha": 0.22,
-            "figure.dpi": 140,
-        }
-    )
+    # Scoped to this call: the styling must not leak into any other figure
+    # produced later in the same process.
+    style = {
+        "font.family": "DejaVu Serif",
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": True,
+        "grid.alpha": 0.22,
+        "figure.dpi": 140,
+    }
+    with plt.rc_context(style):
+        return _draw_figures(solution, parameters, output_path)
+
+
+def _draw_figures(
+    solution: BackgroundSolution,
+    parameters: CosmologyParameters,
+    output_path: Path,
+) -> list[Path]:
     colors = {"spinor": "#b53a2f", "matter": "#16697a", "radiation": "#d49b26"}
     generated: list[Path] = []
 
@@ -469,9 +485,23 @@ def save_figures(
 
     figure, axis = plt.subplots(figsize=(7.2, 4.4))
     scale_factor = solution.scale_factor
-    axis.loglog(scale_factor, solution.spinor_density, color=colors["spinor"], lw=2.4, label="gpt5_6")
-    axis.loglog(scale_factor, parameters.omega_m0 / scale_factor**3, color=colors["matter"], lw=1.8, label="matter")
-    axis.loglog(scale_factor, parameters.omega_r0 / scale_factor**4, color=colors["radiation"], lw=1.6, label="radiation")
+    axis.loglog(
+        scale_factor, solution.spinor_density, color=colors["spinor"], lw=2.4, label="gpt5_6"
+    )
+    axis.loglog(
+        scale_factor,
+        parameters.omega_m0 / scale_factor**3,
+        color=colors["matter"],
+        lw=1.8,
+        label="matter",
+    )
+    axis.loglog(
+        scale_factor,
+        parameters.omega_r0 / scale_factor**4,
+        color=colors["radiation"],
+        lw=1.6,
+        label="radiation",
+    )
     axis.set_xlabel("scale factor a")
     axis.set_ylabel("density / present critical density")
     axis.legend(frameon=False)

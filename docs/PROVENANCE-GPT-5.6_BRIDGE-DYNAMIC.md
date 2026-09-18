@@ -31,8 +31,8 @@ Only `wolframscript` is required for this page.
 ## 2. Getting the repository and checking the prerequisite
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
 mkdir -p logs
 wolframscript -code '{$Version, $LicenseType}'
 ```
@@ -53,7 +53,7 @@ If that prints a licensing error instead, stop: nothing below can run.
 The constant-parameter family (36 assertions, about four minutes):
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 wolframscript -file wolfram/gpt56_bridge.wls 2>&1 | tee logs/gpt56_bridge.log
 echo "exit status: ${PIPESTATUS[0]}"
 tail -n 5 logs/gpt56_bridge.log
@@ -62,7 +62,7 @@ tail -n 5 logs/gpt56_bridge.log
 The bridge **field** (17 assertions, about thirteen seconds):
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 wolframscript -file wolfram/gpt56_bridge_dynamic.wls 2>&1 | tee logs/gpt56_bridge_dynamic.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -294,7 +294,7 @@ constant parameter can do this.
 Serve the repository over HTTP from its root:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 python3 -m http.server 8911
 ```
 
@@ -302,14 +302,21 @@ Then open <http://127.0.0.1:8911/docs/PROVENANCE-GPT-5.6_BRIDGE-DYNAMIC.md> for
 this page and <http://127.0.0.1:8911/artifacts/fable/figures/> for the figures.
 Stop the server with `Ctrl-C`.
 
-To open the bridge notebook in the Wolfram front end instead:
+To evaluate the bridge notebook in place, storing its outputs in the file:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
-wolframscript -file scripts/run_gpt56_notebook.wls 2>&1 | tee logs/run_gpt56_notebook.log
+cd Pre-Universe_opus-fable
+wolframscript -file scripts/execute_gpt56_notebook.wls 2>&1 | tee logs/execute_gpt56_notebook.log
 ```
 
-and then, on a machine with the Mathematica graphical front end installed:
+Expected, on the last lines: `Input cells evaluated    : 5`,
+`Output cells stored      : 5`, `Cells with messages      : 0`,
+`Notebook tests succeeded : 36`, and `SUCCESS: the notebook is evaluated and
+its outputs are stored.` (`scripts/run_gpt56_notebook.wls` evaluates the same
+cells but discards the results; it is kept for anyone who wants to check the
+notebook without rewriting it.)
+
+Then, on a machine with the Mathematica graphical front end installed:
 
 ```bash
 mathematica notebooks/gpt-5.6_bridge.nb

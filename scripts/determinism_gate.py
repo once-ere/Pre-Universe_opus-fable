@@ -61,30 +61,29 @@ def run(command: list[str], label: str) -> None:
 
 
 def regenerate() -> None:
+    """One complete regeneration, in the same order and with the same tools
+    as scripts/verify_all.sh, so what is compared is exactly what is committed."""
     py = str(PYTHON)
+    nbconvert = [py, "-m", "jupyter", "nbconvert", "--to", "notebook", "--execute",
+                 "--inplace", "--ExecutePreprocessor.record_timing=False"]
     run([py, "scripts/run_cosmology.py"], "gpt5_6 numerical artifacts")
     run([py, "scripts/build_cosmology_notebook.py"], "gpt5_6 notebook build")
-    run(
-        [py, "-m", "jupyter", "nbconvert", "--to", "notebook", "--execute",
-         "--inplace", "notebooks/gpt5_6_cosmology.ipynb",
-         "--ExecutePreprocessor.timeout=600",
-         "--ExecutePreprocessor.record_timing=False"],
-        "gpt5_6 notebook execution",
-    )
+    run(nbconvert + ["--ExecutePreprocessor.timeout=600", "notebooks/gpt5_6_cosmology.ipynb"],
+        "gpt5_6 notebook execution")
     run(["./fable_cosmo_rs/target/release/fable_cosmo_rs", "--out", "artifacts/fable"],
         "fable_cosmo_rs reference integration")
     run([py, "scripts/run_fable_cosmology.py"], "fable three-way cross-check and figures")
     run([py, "scripts/build_fable_notebook.py"], "fable notebook build")
-    run(
-        [py, "-m", "jupyter", "nbconvert", "--to", "notebook", "--execute",
-         "--inplace", "notebooks/fable_spinor_dark_energy.ipynb",
-         "--ExecutePreprocessor.timeout=900",
-         "--ExecutePreprocessor.record_timing=False"],
-        "fable notebook execution",
-    )
+    run(nbconvert + ["--ExecutePreprocessor.timeout=900", "notebooks/fable_spinor_dark_energy.ipynb"],
+        "fable notebook execution")
+    # The committed notebooks are the normalized ones, so normalize before hashing.
+    run([py, "scripts/normalize_notebooks.py"], "notebook normalization")
     run([py, "scripts/build_gpt56_notebook.py"], "gpt-5.6 bridge notebook build")
-    run(["wolframscript", "-file", "scripts/run_gpt56_notebook.wls"],
-        "gpt-5.6 bridge notebook execution")
+    # execute_gpt56_notebook.wls writes the outputs back into the .nb; the older
+    # run_gpt56_notebook.wls evaluates but discards them and would leave the
+    # watched file unexecuted.
+    run(["wolframscript", "-file", "scripts/execute_gpt56_notebook.wls"],
+        "gpt-5.6 bridge notebook execution in place")
     run(["bash", "scripts/build_documentation.sh"], "LaTeX reports")
 
 
@@ -99,6 +98,11 @@ def digests() -> dict[str, str]:
 
 
 def main() -> int:
+    if not PYTHON.is_file():
+        raise SystemExit(
+            f"missing {PYTHON}; create it with `uv venv .venv && uv pip install "
+            "--python .venv/bin/python -r requirements.txt` (or python3 -m venv .venv)"
+        )
     print("Run A: regenerating every artifact")
     regenerate()
     first = digests()

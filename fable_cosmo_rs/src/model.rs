@@ -1,9 +1,3 @@
-#![forbid(unsafe_code)]
-#![deny(warnings)]
-#![allow(non_snake_case)]
-#![allow(non_camel_case_types)]
-#![allow(non_upper_case_globals)]
-
 //! The fableSpinor background model.
 //!
 //! `fableSpinor` is a real 16-component field carrying an irreducible
@@ -24,17 +18,22 @@
 //! file is proved symbolically in `wolfram/fable_spinor.wls`.
 
 /// Number of integrated state variables: `[ln S, s]`.
-pub const N_EQ: i64 = 2;
+pub const N_STATE: usize = 2;
+/// The same count as the `sunindextype` the engine's constructors take.
+pub const N_EQ: i64 = N_STATE as i64;
 
 /// Index of `ln S` in the state vector.
 pub const IDX_LOG_S: usize = 0;
 /// Index of the bridge field `s` in the state vector.
 pub const IDX_BRIDGE: usize = 1;
 
+/// The integrated state `[ln S, s]`.
+pub type State = [f64; N_STATE];
+
 /// Relative tolerance handed to CVODE.
 pub const REL_TOL: f64 = 1.0e-12;
 /// Absolute tolerances handed to CVODE, one per state variable.
-pub const ABS_TOL: [f64; 2] = [1.0e-14, 1.0e-14];
+pub const ABS_TOL: State = [1.0e-14, 1.0e-14];
 /// Step ceiling for one `CVode` call.
 pub const MAX_STEPS_PER_CALL: i64 = 500_000;
 
@@ -44,7 +43,7 @@ pub const MAX_STEPS_PER_CALL: i64 = 500_000;
 pub const BENCHMARK_W: f64 = -0.764;
 
 /// Model parameters. All densities are in units of today's critical density.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Params {
     /// Radiation density today.
     pub omega_r0: f64,
@@ -92,7 +91,7 @@ impl Default for Params {
 impl Params {
     /// Fail loudly rather than integrate a meaningless model.
     pub fn validate(&self) -> Result<(), String> {
-        let finite = [
+        let all = [
             self.omega_r0,
             self.omega_b0,
             self.mass_m,
@@ -103,7 +102,7 @@ impl Params {
             self.bridge_s0,
             self.bilinear_s0,
         ];
-        if finite.iter().any(|v| !v.is_finite()) {
+        if all.iter().any(|v| !v.is_finite()) {
             return Err("every parameter must be finite".to_string());
         }
         if self.omega_r0 < 0.0 || self.omega_b0 < 0.0 || self.mass_m < 0.0 {
@@ -131,6 +130,12 @@ impl Params {
             ));
         }
         Ok(())
+    }
+
+    /// The same model with the torsion coupling switched off: the limit in
+    /// which the dark-energy-like component has exactly `w = n - 1`.
+    pub fn torsion_free(&self) -> Params {
+        Params { xi: 0.0, ..*self }
     }
 }
 
@@ -172,6 +177,15 @@ pub fn log_bilinear_closed_form(n: f64, p: &Params) -> f64 {
                 - bilinear_quadrature(p.bridge_s0, p.gamma_flow))
 }
 
+/// The exact closed-form state at e-fold `n`. Used to seed the integrator and
+/// to report "today" independently of where the output grid happens to land.
+pub fn closed_form_state(n: f64, p: &Params) -> State {
+    let mut state = [0.0; N_STATE];
+    state[IDX_LOG_S] = log_bilinear_closed_form(n, p);
+    state[IDX_BRIDGE] = bridge_closed_form(n, p);
+    state
+}
+
 /// Every derived background quantity at one sample.
 #[derive(Clone, Copy, Debug)]
 pub struct Sample {
@@ -208,7 +222,7 @@ pub struct Sample {
 }
 
 /// Build every derived quantity from the integrated state `[ln S, s]`.
-pub fn sample_from_state(e_folds: f64, state: &[f64; 2], p: &Params) -> Sample {
+pub fn sample_from_state(e_folds: f64, state: &State, p: &Params) -> Sample {
     let log_s = state[IDX_LOG_S];
     let s_bridge = state[IDX_BRIDGE];
     let bilinear = log_s.exp();
@@ -218,10 +232,13 @@ pub fn sample_from_state(e_folds: f64, state: &[f64; 2], p: &Params) -> Sample {
     let density_potential = p.lambda * bilinear.powf(p.index_n);
     let density_fable = density_dust + density_potential;
 
-    // p_i = (nu/3) (1, n) rho_i - rho_i, the unique pressures for which the
-    // sector is covariantly conserved with the dilution law dS/dN = -nu S.
-    let pressure_dust = (nu / 3.0 - 1.0) * density_dust;
-    let pressure_potential = (p.index_n * nu / 3.0 - 1.0) * density_potential;
+    // p_i = w_i rho_i with w_dust = nu/3 - 1 and w_potential = n nu/3 - 1: the
+    // unique pressures for which the sector is covariantly conserved under the
+    // dilution law dS/dN = -nu S.
+    let w_dust = nu / 3.0 - 1.0;
+    let w_potential = p.index_n * nu / 3.0 - 1.0;
+    let pressure_dust = w_dust * density_dust;
+    let pressure_potential = w_potential * density_potential;
     let pressure_fable = pressure_dust + pressure_potential;
 
     let scale_factor = e_folds.exp();
@@ -250,13 +267,107 @@ pub fn sample_from_state(e_folds: f64, state: &[f64; 2], p: &Params) -> Sample {
         pressure_potential,
         pressure_fable,
         w_fable: pressure_fable / density_fable,
-        w_dust: nu / 3.0 - 1.0,
-        w_potential: p.index_n * nu / 3.0 - 1.0,
+        w_dust,
+        w_potential,
         hubble_over_h0: density_total.sqrt(),
         omega_fable: density_fable / density_total,
         deceleration: 0.5 * (1.0 + 3.0 * pressure_total / density_total),
         continuity_residual,
         closed_form_residual: log_s - log_bilinear_closed_form(e_folds, p),
         bridge_residual: s_bridge - bridge_closed_form(e_folds, p),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_parameters_are_valid_and_flat() {
+        let p = Params::default();
+        p.validate().unwrap();
+        let total = p.omega_r0 + p.omega_b0 + p.mass_m + p.lambda;
+        assert!((total - 1.0).abs() <= 1.0e-12);
+    }
+
+    #[test]
+    fn invalid_parameters_are_rejected() {
+        let base = Params::default();
+        assert!(Params { index_n: 1.5, ..base }.validate().is_err());
+        assert!(Params { index_n: 0.0, ..base }.validate().is_err());
+        assert!(Params { bridge_s0: 0.0, ..base }.validate().is_err());
+        assert!(Params { gamma_flow: -1.0, ..base }.validate().is_err());
+        assert!(Params { mass_m: 0.5, ..base }.validate().is_err());
+        assert!(Params { xi: f64::NAN, ..base }.validate().is_err());
+    }
+
+    #[test]
+    fn smoothstep_endpoints() {
+        assert_eq!(bridge_h(0.0), 0.0);
+        assert_eq!(bridge_h(1.0), 1.0);
+        assert_eq!(bridge_h(0.5), 0.5);
+    }
+
+    #[test]
+    fn dilution_exponent_is_three_at_the_weitzenboeck_endpoint() {
+        assert_eq!(dilution_exponent(1.0, 0.37), 3.0);
+        assert_eq!(dilution_exponent(0.25, 0.0), 3.0);
+    }
+
+    #[test]
+    fn closed_form_solves_the_dilution_law() {
+        // d(ln S)/dN must equal -nu(s(N)) along the logistic flow.
+        let p = Params::default();
+        let step = 1.0e-6;
+        let mut worst = 0.0_f64;
+        for k in 0..=400 {
+            let n = -6.0 + 7.0 * k as f64 / 400.0;
+            let numerical = (log_bilinear_closed_form(n + step, &p)
+                - log_bilinear_closed_form(n - step, &p))
+                / (2.0 * step);
+            let analytic = -dilution_exponent(bridge_closed_form(n, &p), p.xi);
+            worst = worst.max((numerical - analytic).abs());
+        }
+        assert!(worst < 1.0e-8, "worst residual {worst}");
+    }
+
+    #[test]
+    fn closed_form_state_is_anchored_today() {
+        let p = Params::default();
+        let today = closed_form_state(0.0, &p);
+        assert_eq!(today[IDX_BRIDGE], p.bridge_s0);
+        assert_eq!(today[IDX_LOG_S], p.bilinear_s0.ln());
+    }
+
+    #[test]
+    fn sector_is_covariantly_conserved() {
+        let p = Params::default();
+        for k in 0..=50 {
+            let n = -7.0 + 8.0 * k as f64 / 50.0;
+            let s = sample_from_state(n, &closed_form_state(n, &p), &p);
+            assert!(s.continuity_residual.abs() < 1.0e-13, "N = {n}");
+        }
+    }
+
+    #[test]
+    fn torsion_free_limit_reproduces_the_benchmark_exactly() {
+        let p = Params::default().torsion_free();
+        let s = sample_from_state(0.0, &closed_form_state(0.0, &p), &p);
+        assert_eq!(s.w_potential, BENCHMARK_W);
+        assert_eq!(s.w_dust, 0.0);
+    }
+
+    #[test]
+    fn dark_matter_early_dark_energy_late() {
+        let p = Params::default().torsion_free();
+        let early = sample_from_state(-12.0, &closed_form_state(-12.0, &p), &p);
+        let late = sample_from_state(6.0, &closed_form_state(6.0, &p), &p);
+        assert!(early.w_fable.abs() < 1.0e-3, "early w = {}", early.w_fable);
+        assert!(
+            (late.w_fable - BENCHMARK_W).abs() < 1.0e-3,
+            "late w = {}",
+            late.w_fable
+        );
+        assert!(early.w_fable > -1.0 && late.w_fable > -1.0);
     }
 }

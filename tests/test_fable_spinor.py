@@ -1,22 +1,21 @@
 """Tests for the fableSpinor algebra and its background cosmology.
 
-Run from the repository root:
+Run from the repository root (pytest.ini puts src/ on the import path):
 
-    PYTHONPATH=src python3 -m pytest tests/test_fable_spinor.py -q
+    python3 -m pytest tests/test_fable_spinor.py -q
 """
 
 from __future__ import annotations
 
-import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+import fable_spinor as fs
 
-import fable_spinor as fs  # noqa: E402
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
 
 # --------------------------------------------------------------------------- #
@@ -82,9 +81,8 @@ def test_pin_representation_is_absolutely_irreducible():
 def test_spin_representation_is_reducible():
     """Under the connected group the 16 splits as 8 + 8, so the commutant is
     spanned by the identity and the chirality operator."""
-    generators = np.array(
-        [fs.LORENTZ[a, b] for a in range(8) for b in range(a + 1, 8)]
-    )
+    generators = fs.independent_lorentz_generators()
+    assert generators.shape == (28, 16, 16)
     assert fs.commutant_dimension(generators) == 2
 
 
@@ -147,9 +145,21 @@ def test_default_parameters_describe_a_flat_universe():
     ],
 )
 def test_invalid_parameters_are_rejected(override):
-    base = vars(fs.FableParameters())
     with pytest.raises(ValueError):
-        fs.FableParameters(**{**base, **override}).validate()
+        replace(fs.FableParameters(), **override).validate()
+
+
+@pytest.mark.parametrize("override", [{"omega_b0": -0.01}, {"bilinear_s0": 0.0}, {"xi": float("nan")}])
+def test_negative_density_zero_bilinear_and_nan_are_rejected(override):
+    with pytest.raises(ValueError):
+        replace(fs.FableParameters(), **override).validate()
+
+
+def test_parameter_helpers_only_change_xi():
+    p = fs.FableParameters()
+    assert p.torsion_free() == replace(p, xi=0.0)
+    assert p.with_xi(0.25) == replace(p, xi=0.25)
+    assert p.torsion_free().validate() is None
 
 
 def test_closed_form_solves_the_dilution_law():
@@ -179,16 +189,13 @@ def test_sector_is_covariantly_conserved():
 def test_massless_torsion_free_limit_reproduces_the_benchmark():
     """The published claim: w = n - 1 exactly, so n = 1 + (-0.764) gives
     a flat, non-evolving w = -0.764."""
-    base = vars(fs.FableParameters())
-    p = fs.FableParameters(**{**base, "xi": 0.0})
-    solution = fs.solve_background(p)
+    solution = fs.solve_background(fs.FableParameters().torsion_free())
     assert np.allclose(solution.w_potential, fs.BENCHMARK_W, atol=1e-12)
     assert np.allclose(solution.w_dust, 0.0, atol=1e-12)
 
 
 def test_unified_dark_sector_interpolates_dust_and_dark_energy():
-    base = vars(fs.FableParameters())
-    p = fs.FableParameters(**{**base, "xi": 0.0})
+    p = fs.FableParameters().torsion_free()
     solution = fs.solve_background(p, n_start=-12.0, n_end=6.0, samples=2001)
     early = solution.w_fable[0]
     late = solution.w_fable[-1]
@@ -200,9 +207,9 @@ def test_unified_dark_sector_interpolates_dust_and_dark_energy():
 def test_second_mechanism_needs_torsion_and_survives_without_a_potential():
     """w moves with the bridge field only when xi is nonzero, and it moves even
     when the potential index is held fixed."""
-    base = vars(fs.FableParameters())
-    frozen = fs.solve_background(fs.FableParameters(**{**base, "xi": 0.0}))
-    active = fs.solve_background(fs.FableParameters(**{**base, "xi": 0.25}))
+    p = fs.FableParameters()
+    frozen = fs.solve_background(p.torsion_free())
+    active = fs.solve_background(p.with_xi(0.25))
     assert np.ptp(frozen.w_potential) == pytest.approx(0.0, abs=1e-14)
     assert np.ptp(active.w_potential) > 1e-3
     assert np.ptp(frozen.w_dust) == pytest.approx(0.0, abs=1e-14)
@@ -224,3 +231,44 @@ def test_reference_binary_is_required_not_optional():
             repository_root=REPOSITORY_ROOT,
             binary=REPOSITORY_ROOT / "fable_cosmo_rs/target/release/not-a-binary",
         )
+
+
+def test_solve_background_rejects_a_degenerate_grid():
+    with pytest.raises(ValueError):
+        fs.solve_background(n_start=1.0, n_end=0.0)
+    with pytest.raises(ValueError):
+        fs.solve_background(samples=1)
+
+
+def test_background_columns_match_the_reference_csv_schema():
+    """Every column the Rust binary writes has a same-named field here, so
+    the two integrators can be compared column for column."""
+    fields = set(fs.FableBackground.__dataclass_fields__)
+    assert set(fs.PHYSICAL_COLUMNS) <= fields
+    residuals = {"continuity_residual", "closed_form_residual", "bridge_residual"}
+    assert fields == set(fs.PHYSICAL_COLUMNS) | residuals
+
+
+def test_compare_to_reference_rejects_a_missing_column_and_a_grid_mismatch():
+    background = fs.solve_background(samples=11)
+    with pytest.raises(KeyError):
+        fs.compare_to_reference(background, {}, columns=("e_folds",))
+    with pytest.raises(ValueError):
+        fs.compare_to_reference(
+            background, {"e_folds": np.zeros(10)}, columns=("e_folds",)
+        )
+
+
+@pytest.mark.skipif(
+    not (REPOSITORY_ROOT / fs.REFERENCE_BINARY).is_file(),
+    reason="fable_cosmo_rs is not built; run `cargo build --release` in fable_cosmo_rs/",
+)
+def test_scipy_agrees_with_the_pure_rust_reference(tmp_path):
+    """The three-way check, as a test: SciPy Radau against pure-Rust CVODE on
+    every physical column, to the mixed tolerance the published gates use."""
+    run = fs.run_reference(tmp_path, repository_root=REPOSITORY_ROOT)
+    assert "SUCCESS: every gated invariant holds." in run.stdout
+    differences = fs.compare_to_reference(fs.solve_background(), run.table())
+    assert set(differences) == set(fs.PHYSICAL_COLUMNS)
+    worst = max(differences.values())
+    assert worst < 1e-10, differences

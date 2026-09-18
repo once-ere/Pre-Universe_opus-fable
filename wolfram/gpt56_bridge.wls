@@ -21,8 +21,12 @@ gCanonical = Simplify[
 ];
 inverseGCanonical = Simplify[Inverse[gCanonical], assumptions];
 
+(* A literal 0 needs no FullSimplify; most entries of a residual tensor are
+   already literal zeros after the Simplify that built them. AllTrue stops at
+   the first counterexample. Truth values are unchanged; only work is saved. *)
+zeroQ[0] := True;
 zeroQ[expression_] := TrueQ[FullSimplify[expression == 0, assumptions]];
-zeroArrayQ[expression_] := And @@ (zeroQ /@ Flatten[expression]);
+zeroArrayQ[expression_] := AllTrue[Flatten[{expression}], zeroQ];
 nonzeroCount[expression_] := Count[
   FullSimplify[#, assumptions] & /@ Flatten[expression], Except[0]
 ];
@@ -113,9 +117,20 @@ curvatureComponent[affine_, rho_, sigma_, mu_, nu_] := Simplify[
   assumptions
 ];
 
-curvatureTensor[affine_] := Table[
-  curvatureComponent[affine, rho, sigma, mu, nu],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}
+(* Every four-index object below is antisymmetric in its last index pair by
+   the form of its defining expression, so only the mu < nu entries are ever
+   simplified; the rest are filled by antisymmetry. This halves the dominant
+   cost of the file without changing a single component. *)
+antisymmetricInLastPair[component_, n_] := Module[{upper},
+  upper = Table[
+    If[mu < nu, component[i, j, mu, nu], 0],
+    {i, n}, {j, n}, {mu, n}, {nu, n}
+  ];
+  upper - Transpose[upper, {1, 2, 4, 3}]
+];
+
+curvatureTensor[affine_] := antisymmetricInLastPair[
+  curvatureComponent[affine, #1, #2, #3, #4] &, dimension
 ];
 
 metricCompatibilityResidual[metric_, affine_] := Simplify[
@@ -131,7 +146,7 @@ metricCompatibilityResidual[metric_, affine_] := Simplify[
   assumptions
 ];
 
-covariantExteriorDerivative[base_, difference_] := Table[
+covariantExteriorDerivativeComponent[base_, difference_, rho_, sigma_, mu_, nu_] :=
   Simplify[
     D[difference[[rho, nu, sigma]], coordinates[[mu]]] -
     D[difference[[rho, mu, sigma]], coordinates[[nu]]] +
@@ -143,20 +158,24 @@ covariantExteriorDerivative[base_, difference_] := Table[
       {lambda, dimension}
     ],
     assumptions
-  ],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}
+  ];
+
+covariantExteriorDerivative[base_, difference_] := antisymmetricInLastPair[
+  covariantExteriorDerivativeComponent[base, difference, #1, #2, #3, #4] &,
+  dimension
 ];
 
-connectionWedge[difference_] := Table[
-  Simplify[
-    Sum[
-      difference[[rho, mu, lambda]] difference[[lambda, nu, sigma]] -
-      difference[[rho, nu, lambda]] difference[[lambda, mu, sigma]],
-      {lambda, dimension}
-    ],
-    assumptions
+connectionWedgeComponent[difference_, rho_, sigma_, mu_, nu_] := Simplify[
+  Sum[
+    difference[[rho, mu, lambda]] difference[[lambda, nu, sigma]] -
+    difference[[rho, nu, lambda]] difference[[lambda, mu, sigma]],
+    {lambda, dimension}
   ],
-  {rho, dimension}, {sigma, dimension}, {mu, dimension}, {nu, dimension}
+  assumptions
+];
+
+connectionWedge[difference_] := antisymmetricInLastPair[
+  connectionWedgeComponent[difference, #1, #2, #3, #4] &, dimension
 ];
 
 torsionForm[frame_, spinConnection_] := Table[
@@ -173,18 +192,24 @@ torsionForm[frame_, spinConnection_] := Table[
   {a, dimension}, {mu, dimension}, {nu, dimension}
 ];
 
-spinCurvature[spinConnection_] := Table[
-  Simplify[
-    D[spinConnection[[nu, a, b]], coordinates[[mu]]] -
-    D[spinConnection[[mu, a, b]], coordinates[[nu]]] +
-    Sum[
-      spinConnection[[mu, a, c]] spinConnection[[nu, c, b]] -
-      spinConnection[[nu, a, c]] spinConnection[[mu, c, b]],
-      {c, dimension}
-    ],
-    assumptions
+spinCurvatureComponent[spinConnection_, mu_, nu_, a_, b_] := Simplify[
+  D[spinConnection[[nu, a, b]], coordinates[[mu]]] -
+  D[spinConnection[[mu, a, b]], coordinates[[nu]]] +
+  Sum[
+    spinConnection[[mu, a, c]] spinConnection[[nu, c, b]] -
+    spinConnection[[nu, a, c]] spinConnection[[mu, c, b]],
+    {c, dimension}
   ],
-  {mu, dimension}, {nu, dimension}, {a, dimension}, {b, dimension}
+  assumptions
+];
+
+(* Indexed [mu, nu, a, b]: build with the antisymmetric pair last, then move
+   it to the front. *)
+spinCurvature[spinConnection_] := Transpose[
+  antisymmetricInLastPair[
+    spinCurvatureComponent[spinConnection, #3, #4, #1, #2] &, dimension
+  ],
+  {3, 4, 1, 2}
 ];
 
 coordinateTriples = Subsets[Range[dimension], {3}];

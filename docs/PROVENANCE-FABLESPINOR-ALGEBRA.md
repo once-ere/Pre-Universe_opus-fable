@@ -33,8 +33,8 @@ missing; it must be activated, because an unactivated kernel refuses to
 evaluate. Then:
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
 mkdir -p logs
 wolframscript -code '{$Version, $LicenseType}'
 ```
@@ -54,7 +54,7 @@ page can run, and no result below can be reproduced.
 ## 3. The one command that produces the result
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 wolframscript -file wolfram/fable_spinor.wls 2>&1 | tee logs/fable_spinor.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -306,7 +306,7 @@ the accompanying figures in a browser, serve the repository over HTTP from its
 root and open the served address:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 python3 -m http.server 8911
 ```
 
@@ -317,9 +317,9 @@ Stop the server with `Ctrl-C`.
 To see the same physics as a rendered, executed notebook with embedded plots:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or, if you prefer the standard library: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m jupyter lab notebooks/fable_spinor_dark_energy.ipynb
 ```
 

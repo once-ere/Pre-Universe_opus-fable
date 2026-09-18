@@ -79,7 +79,11 @@ def build_notebook() -> tuple[int, int]:
                 "Weitzenboeck connection used by FABLE-5.1. The distinguished new connection "
                 "omegaGPT56 is t=1/2. Its value is not claimed to be experimentally preferred; "
                 "its advantage is that one covariant, exactly tested family contains both endpoint "
-                "geometries and a nontrivial mixed curvature-torsion interior.",
+                "geometries and a nontrivial mixed curvature-torsion interior. "
+                "The stronger result, proved in wolfram/gpt56_bridge_dynamic.wls, promotes t to a "
+                "scalar field on spacetime: the curvature then acquires a gradient term no constant "
+                "parameter can produce, and the connection becomes irremovable from the Dirac "
+                "operator by any spinor rescaling.",
             ),
         ]
     )

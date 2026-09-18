@@ -33,8 +33,8 @@ Install the Rust toolchain from <https://rustup.rs> if `cargo` is missing (one
 command, no administrator rights). Then:
 
 ```bash
-git clone --recurse-submodules https://github.com/once-ere/Pre-Universe-GPT5_6_Sol.git
-cd Pre-Universe-GPT5_6_Sol
+git clone --recurse-submodules https://github.com/once-ere/Pre-Universe_opus-fable.git
+cd Pre-Universe_opus-fable
 mkdir -p logs
 cargo --version
 python3 --version
@@ -44,14 +44,14 @@ If the repository was cloned **without** `--recurse-submodules`, the engine is
 missing and nothing will build. Repair it with:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 git submodule update --init --recursive
 ```
 
 Confirm the engine is present and pinned to the exact reference commit:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 git -C vendor/sundials_rs rev-parse HEAD
 ls vendor/sundials_rs/crates | sort
 ```
@@ -72,9 +72,9 @@ sundials_core
 Install the Python packages used by the cross-check and the figures:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+cd Pre-Universe_opus-fable
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+# or, if you prefer the standard library: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 ```
 
 ---
@@ -82,7 +82,7 @@ python3 -m venv .venv
 ## 3. Build and run
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol/fable_cosmo_rs
+cd Pre-Universe_opus-fable/fable_cosmo_rs
 cargo build --release 2>&1 | tee ../logs/fable_cosmo_build.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -92,7 +92,7 @@ Zero errors and **zero warnings** are expected; the crate declares
 failure.
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 ./fable_cosmo_rs/target/release/fable_cosmo_rs --out artifacts/fable 2>&1 | tee logs/fable_cosmo_run.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -167,7 +167,7 @@ The program is only one of three routes to the same numbers.
 Run all three and compare:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python scripts/run_fable_cosmology.py 2>&1 | tee logs/run_fable_cosmology.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
@@ -179,7 +179,7 @@ echo "exit status: ${PIPESTATUS[0]}"
 | continuity residual | $10^{-13}$ | $\mathrm{d}\rho/\mathrm{d}N+3(\rho+p)=0$ |
 | closed-form residual | $10^{-9}$ | integrator versus the exact solution |
 | bridge residual | $10^{-9}$ | integrated $s$ versus the logistic solution |
-| cross-check, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $10^{-10}$ | SciPy versus CVODE |
+| cross-check, $\lvert a-b\rvert/(1+\lvert b\rvert)$ | $10^{-10}$ | SciPy versus CVODE, on all 19 physical columns |
 | benchmark error | $10^{-12}$ | $w_{\text{potential}}=-0.764$ when $\xi=0$ |
 | dust error | $10^{-12}$ | $w_{\text{dust}}=0$ when $\xi=0$ |
 
@@ -228,13 +228,26 @@ SUCCESS: every gated invariant holds.
 Cross-check section of `logs/run_fable_cosmology.log` from the recorded run:
 
 ```
-SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|):
-  bilinear          : 2.858131e-11
-  bridge            : 3.612555e-11
-  e_folds           : 0.000000e+00
-  hubble_over_h0    : 1.053052e-11
-  w_fable           : 3.541414e-12
-  w_potential       : 5.396753e-13
+SciPy Radau vs pure-Rust CVODE, largest |a-b|/(1+|b|) over 19 columns:
+  bilinear            : 2.858131e-11
+  bridge              : 3.612555e-11
+  bridge_h            : 5.434065e-11
+  deceleration        : 4.167814e-12
+  density_dust        : 2.836593e-11
+  density_fable       : 2.779980e-11
+  density_potential   : 5.071802e-12
+  dilution            : 3.093799e-12
+  e_folds             : 0.000000e+00
+  hubble_over_h0      : 1.053052e-11
+  omega_fable         : 2.376723e-12
+  pressure_dust       : 1.676068e-11
+  pressure_fable      : 1.532891e-11
+  pressure_potential  : 4.542126e-12
+  redshift            : 0.000000e+00
+  scale_factor        : 0.000000e+00
+  w_dust              : 3.949653e-12
+  w_fable             : 3.541414e-12
+  w_potential         : 5.396753e-13
 
 max |closed-form residual| : 3.233014e-11  (gate 1.0e-09)
 max |continuity residual|  : 1.194042e-15  (gate 1.0e-13)
@@ -264,7 +277,7 @@ second mechanism at work.
 Inspect the CSV directly:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 head -1 artifacts/fable/fable_background.csv | tr ',' '\n' | nl
 wc -l artifacts/fable/fable_background.csv
 ```
@@ -272,7 +285,7 @@ wc -l artifacts/fable/fable_background.csv
 Read the summary:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 cat artifacts/fable/fable_published_summary.json
 ```
 
@@ -283,7 +296,7 @@ cat artifacts/fable/fable_published_summary.json
 No `unsafe`, and no external crates:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 grep -rn "unsafe" fable_cosmo_rs/src/
 grep -c '^\[\[package\]\]' fable_cosmo_rs/Cargo.lock
 grep -A1 '^\[\[package\]\]' fable_cosmo_rs/Cargo.lock | grep '^name'
@@ -296,7 +309,7 @@ attributes, and `Cargo.lock` lists exactly three packages — `cvode_rs`,
 Rebuild from scratch to confirm a clean tree builds warning-free:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol/fable_cosmo_rs
+cd Pre-Universe_opus-fable/fable_cosmo_rs
 cargo clean
 cargo build --release 2>&1 | tee ../logs/fable_cosmo_rebuild.log
 grep -c warning ../logs/fable_cosmo_rebuild.log
@@ -311,7 +324,7 @@ Expected: `0`.
 Serve the repository over HTTP from its root:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 python3 -m http.server 8911
 ```
 
@@ -331,7 +344,7 @@ rustSolveIt project occupies 8895–8907.
 For the same physics as a live, executed notebook with embedded plots:
 
 ```bash
-cd Pre-Universe-GPT5_6_Sol
+cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter lab notebooks/fable_spinor_dark_energy.ipynb
 ```
 

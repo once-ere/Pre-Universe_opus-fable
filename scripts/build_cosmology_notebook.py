@@ -88,9 +88,9 @@ REPOSITORY_ROOT = Path.cwd().resolve()
 if not (REPOSITORY_ROOT / "src").is_dir():
     REPOSITORY_ROOT = REPOSITORY_ROOT.parent
 assert (REPOSITORY_ROOT / "src" / "gpt5_6_cosmology.py").is_file()
-sys.path.insert(0, str(REPOSITORY_ROOT))
+sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
-from src.gpt5_6_cosmology import (
+from gpt5_6_cosmology import (
     GAMMA_16,
     UNITE_BAO_CMB_CPL_BENCHMARK,
     UNITE_ONLY_CONSTANT_W_BENCHMARK,
