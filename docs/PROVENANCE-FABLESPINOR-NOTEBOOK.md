@@ -231,26 +231,35 @@ move, at a fixed potential index.
 
 ## 6. Running the underlying tests
 
+`pytest.ini` puts `src/` on the import path, so no `PYTHONPATH` is needed:
+
 ```bash
 cd Pre-Universe_opus-fable
-PYTHONPATH=src .venv/bin/python -m pytest tests/test_fable_spinor.py -q 2>&1 | tee logs/pytest_fable_spinor.log
+.venv/bin/python -m pytest tests/test_fable_spinor.py -q 2>&1 | tee logs/pytest_fable_spinor.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
 
-Expected output:
+Expected output when the Rust reference integrator has been built:
 
 ```
-...........................                                              [100%]
-27 passed in 0.83s
+...................................                                      [100%]
+35 passed in 0.91s
 ```
+
+One of those tests runs the Rust binary and compares it with SciPy on all 19
+physical columns. If the binary has not been built yet, that single test is
+skipped rather than failed, and the output reads `34 passed, 1 skipped`; the
+skip message names the build command. Nothing is silently substituted.
 
 To run every test in the repository, including the earlier `gpt5_6` suite:
 
 ```bash
 cd Pre-Universe_opus-fable
-PYTHONPATH=src .venv/bin/python -m pytest -q 2>&1 | tee logs/pytest_all.log
+.venv/bin/python -m pytest -q 2>&1 | tee logs/pytest_all.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
+
+Expected: `45 passed`.
 
 ---
 

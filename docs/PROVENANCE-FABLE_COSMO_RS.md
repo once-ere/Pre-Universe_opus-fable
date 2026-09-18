@@ -91,6 +91,26 @@ Zero errors and **zero warnings** are expected; the crate declares
 `#![forbid(unsafe_code)]` and `#![deny(warnings)]`, so a warning is a build
 failure.
 
+Run the crate's own unit tests. They cover parameter validation, the smoothstep
+and dilution-exponent endpoints, that the closed form solves the dilution law,
+covariant conservation, the exact benchmark limit, the dark-matter-early /
+dark-energy-late behaviour, the CVODE driver against the closed form, the CSV
+header/row arity and round-trip, the JSON shape, and the command-line parser:
+
+```bash
+cd Pre-Universe_opus-fable/fable_cosmo_rs
+cargo test --release 2>&1 | tee ../logs/fable_cosmo_test.log
+echo "exit status: ${PIPESTATUS[0]}"
+```
+
+Expected, on the last line of the report:
+
+```
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+Then run the integration itself:
+
 ```bash
 cd Pre-Universe_opus-fable
 ./fable_cosmo_rs/target/release/fable_cosmo_rs --out artifacts/fable 2>&1 | tee logs/fable_cosmo_run.log
@@ -302,9 +322,11 @@ grep -c '^\[\[package\]\]' fable_cosmo_rs/Cargo.lock
 grep -A1 '^\[\[package\]\]' fable_cosmo_rs/Cargo.lock | grep '^name'
 ```
 
-Expected: the only `unsafe` occurrences are the `#![forbid(unsafe_code)]`
-attributes, and `Cargo.lock` lists exactly three packages — `cvode_rs`,
-`fable_cosmo_rs` and `sundials_core` — all local, none from a registry.
+Expected: the only `unsafe` occurrence is the single `#![forbid(unsafe_code)]`
+attribute at the top of `src/main.rs` — a crate-root attribute applies to every
+module, so it appears once and nowhere else — and `Cargo.lock` lists exactly
+three packages — `cvode_rs`, `fable_cosmo_rs` and `sundials_core` — all local,
+none from a registry.
 
 Rebuild from scratch to confirm a clean tree builds warning-free:
 
