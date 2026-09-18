@@ -35,6 +35,8 @@ REQUIRED = [
     "fable_cosmo_rs/src/output.rs",
     "src/fable_spinor.py",
     "tests/test_fable_spinor.py",
+    "tests/verify_wolfram_source.wls",
+    "LICENSE",
     "artifacts/fable/fable_published_summary.json",
     "artifacts/fable/figures/fable_equation_of_state.png",
     "artifacts/fable/figures/fable_dark_sector.png",
@@ -87,6 +89,11 @@ def main() -> int:
         encoding="utf-8"
     )
     assert html.count("<img") >= 2, html.count("<img")
+    # Every figure must carry real alternative text; nbconvert substitutes this
+    # placeholder (and warns) whenever one does not.
+    placeholder = "No description has been provided for this image"
+    assert placeholder not in html, "a figure in the HTML export has no alt text"
+    assert html.count('<img alt="') >= 2, "figures must be emitted with alt attributes"
 
     missing = [p for p in REQUIRED if not (REPOSITORY_ROOT / p).is_file()
                or (REPOSITORY_ROOT / p).stat().st_size == 0]

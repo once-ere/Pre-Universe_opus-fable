@@ -137,8 +137,21 @@ paragraph exists.
   `scripts/run_gpt56_notebook.wls`, so the notebook is evaluated *in place*
   every time the suite runs. It greps for five exact lines, including
   `Output cells stored      : 5` and `Cells with messages      : 0`.
+- **Stages 7 and 9** run the three Wolfram sources through
+  `tests/verify_wolfram_source.wls` rather than through a bare
+  `wolframscript -file`. The verifier loads the named source with
+  `$MessageList` captured and exits `1` if any assertion fails **or** any
+  kernel message was emitted; the stage then greps for
+  `Source verifier messages : 0` and the `SUCCESS: <file>` line. This is what
+  caught a `Limit::alimv` message in `wolfram/fable_spinor.wls` that every
+  assertion had been passing over; the offending `Limit` calls now carry
+  explicit assumptions and a `Direction`, and the message is gone.
 - **Stages 3 and 12** call `scripts/normalize_notebooks.py` immediately after
-  each Jupyter execution.
+  each Jupyter execution, and every `nbconvert --execute` in the suite passes
+  `--KernelManager.transport_encryption=auto`, so `jupyter_client` provisions
+  CurveZMQ keys for the kernel and `ipykernel` 7 no longer prints
+  `Kernel is running over TCP without encryption` at each launch. The full
+  suite log now contains no `WARNING` line at all.
 - **Stage 13** is new: `scripts/audit_notebooks.py` walks every notebook,
   Jupyter and Mathematica alike, and fails if any code cell was never executed,
   any cell produced an error, or the Mathematica notebook carries fewer output
@@ -223,13 +236,15 @@ cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/gpt5_6_cosmology.ipynb \
   --ExecutePreprocessor.timeout=180 \
-  --ExecutePreprocessor.record_timing=False 2>&1 | tee logs/execute_cosmology_notebook.log
+  --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto 2>&1 | tee logs/execute_cosmology_notebook.log
 
 .venv/bin/python scripts/build_fable_notebook.py
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/fable_spinor_dark_energy.ipynb \
   --ExecutePreprocessor.timeout=900 \
-  --ExecutePreprocessor.record_timing=False 2>&1 | tee logs/execute_fable_notebook.log
+  --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto 2>&1 | tee logs/execute_fable_notebook.log
 
 .venv/bin/python scripts/normalize_notebooks.py 2>&1 | tee logs/normalize_notebooks.log
 ```
@@ -344,8 +359,9 @@ of the suite asserts the alt text of all four.
 | Rust unit tests, `fable_cosmo_rs` | 20 passed |
 | Wolfram messages raised, any cell | 0 |
 | Jupyter cell errors | 0 |
+| `WARNING` lines in the full suite log | 0 |
 | verification stages | 13 of 13 passed |
-| wall-clock, full suite | 2 min 16 s on 24 cores |
+| wall-clock, full suite | 1 min 49 s on 24 cores |
 
 ### 5.5 Determinism
 
@@ -381,7 +397,7 @@ cd Pre-Universe_opus-fable
 sha256sum -c artifacts/SHA256SUMS
 ```
 
-Expected: `73` lines ending in `: OK` and no warning. The manifest is
+Expected: `75` lines ending in `: OK` and no warning. The manifest is
 regenerated only by `scripts/write_checksums.py`, and only after the determinism
 gate passes — pinning an artifact that is not byte-reproducible would turn the
 integrity check into a flaky test that people learn to ignore.

@@ -266,15 +266,19 @@ masslessEquationOfState = Simplify[
 benchmarkIndex = 1 - 764/1000;
 benchmarkEquationOfState = masslessEquationOfState /. indexN -> benchmarkIndex;
 
+(* The limit variable must not appear in Assumptions (Limit ignores such
+   assumptions and raises Limit::alimv); positivity of S is expressed by the
+   direction of approach instead. *)
+limitAssumptions = massM > 0 && couplingLambda > 0 &&
+  0 < indexN < 1 && nuSymbol \[Element] Reals;
+
 earlyTimeEquationOfState = Simplify[
   Limit[equationOfState[scaleS, nuSymbol], scaleS -> Infinity,
-    Assumptions -> scaleS > 0 && massM > 0 && couplingLambda > 0 &&
-      0 < indexN < 1 && nuSymbol \[Element] Reals]
+    Assumptions -> limitAssumptions]
 ];
 lateTimeEquationOfState = Simplify[
   Limit[equationOfState[scaleS, nuSymbol], scaleS -> 0,
-    Assumptions -> scaleS > 0 && massM > 0 && couplingLambda > 0 &&
-      0 < indexN < 1 && nuSymbol \[Element] Reals]
+    Direction -> "FromAbove", Assumptions -> limitAssumptions]
 ];
 
 (* The second mechanism: w acquires an explicit dependence on the bridge   *)

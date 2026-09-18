@@ -450,7 +450,8 @@ Build, execute, and export the notebook:
 .venv/bin/python scripts/build_cosmology_notebook.py
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/gpt5_6_cosmology.ipynb --ExecutePreprocessor.timeout=180 \
-  --ExecutePreprocessor.record_timing=False
+  --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto
 .venv/bin/python -m jupyter nbconvert --to html --output-dir build \
   notebooks/gpt5_6_cosmology.ipynb
 ```

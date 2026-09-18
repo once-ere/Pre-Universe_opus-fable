@@ -68,6 +68,37 @@ To read the result back afterwards:
 tail -n 14 logs/fable_spinor.log
 ```
 
+### 3.1 The stricter form: assertions **and** zero kernel messages
+
+A Wolfram script can pass every `VerificationTest` while the kernel still
+emits a message such as `Limit::alimv` on the way, and `wolframscript` does not
+turn such messages into a non-zero exit status. The repository therefore ships
+a verifier that loads the source with `$MessageList` captured and fails if
+**any** message was generated:
+
+```bash
+cd Pre-Universe_opus-fable
+wolframscript -file tests/verify_wolfram_source.wls wolfram/fable_spinor.wls \
+  2>&1 | tee logs/verify-fable-spinor.log
+echo "exit status: ${PIPESTATUS[0]}"
+```
+
+The last lines of the log must read, with a machine-dependent seconds value:
+
+```
+Source verifier file     : fable_spinor.wls
+Source verifier seconds  : 1.25275
+Source verifier messages : 0
+Source verifier succeeded: 30
+Source verifier failed   : 0
+SUCCESS: fable_spinor.wls passed every assertion with no messages.
+```
+
+Exit status `0` is the pass certificate; `1` means at least one assertion
+failed **or** at least one message was emitted; `2` means the path argument
+was missing or the file does not exist. This is the form the repository's
+`scripts/verify_all.sh` runs.
+
 ---
 
 ## 4. What the script defines

@@ -99,7 +99,8 @@ Then choose **Run > Run All Cells**. Headless execution of the same notebook is
 ```
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \\
   notebooks/fable_spinor_dark_energy.ipynb \\
-  --ExecutePreprocessor.timeout=600 --ExecutePreprocessor.record_timing=False
+  --ExecutePreprocessor.timeout=600 --ExecutePreprocessor.record_timing=False \\
+  --KernelManager.transport_encryption=auto
 ```
 
 The Rust build is **required**, not optional: the helper that runs it raises
@@ -119,7 +120,26 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import numpy as np
 import matplotlib.pyplot as plt
+from base64 import b64encode
+from html import escape
+from io import BytesIO
+from IPython.display import display
 import fable_spinor as fs
+
+
+def show(figure, alt):
+    # One output, two renderings: the PNG for JupyterLab and the notebook file,
+    # and an <img alt=...> for the HTML export, whose default template ignores
+    # alt text carried only in image metadata.
+    buffer = BytesIO()
+    figure.tight_layout()
+    figure.savefig(buffer, format="png", dpi=100, bbox_inches="tight")
+    plt.close(figure)
+    png = buffer.getvalue()
+    html = (f'<img alt="{escape(alt, quote=True)}" '
+            f'src="data:image/png;base64,{b64encode(png).decode("ascii")}">')
+    display({"image/png": png, "text/html": html}, raw=True,
+            metadata={"image/png": {"alt": alt}})
 
 # Nothing machine- or checkout-specific is printed here: an absolute path, or
 # even the clone's directory name, would make this cell's output differ from
@@ -375,7 +395,10 @@ ax[1].axvline(1.0, color="grey", lw=0.8)
 ax[1].set_xlabel("scale factor $a$"); ax[1].set_ylabel(r"$\\rho/\\rho_{c,0}$")
 ax[1].set_title("One field, two behaviours"); ax[1].grid(alpha=0.3, which="both"); ax[1].legend(fontsize=8)
 
-plt.tight_layout(); plt.show()
+show(fig, "Left: equation of state w against redshift for the whole fable sector and its "
+          "dust-like and potential parts, with the benchmark w = -0.764 marked. Right: the "
+          "dust-like and dark-energy-like densities crossing near the present epoch, with "
+          "baryons and radiation for scale.")
 """))
 
 CELLS.append(md("""
@@ -405,7 +428,9 @@ for panel, title in ((ax[0], "potential part"), (ax[1], "dust-like part")):
     panel.set_xlabel("redshift $z$"); panel.set_ylabel("$w$")
     panel.set_title(f"Second mechanism: {title}")
     panel.grid(alpha=0.3); panel.legend(fontsize=8)
-plt.tight_layout(); plt.show()
+show(fig, "Two panels of w against redshift for torsion couplings xi = 0, 0.10, 0.15 and "
+          "0.25, at fixed potential index: the potential part on the left, the dust-like "
+          "part on the right. The xi = 0 curves are exactly flat; the others move.")
 
 frozen = fs.solve_background(p.torsion_free())
 active = fs.solve_background(p.with_xi(0.25))

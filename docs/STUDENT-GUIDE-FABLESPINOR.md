@@ -391,13 +391,16 @@ Only if you have Mathematica or the Wolfram Engine installed and activated:
 ```bash
 cd Pre-Universe_opus-fable
 wolframscript -code '{$Version, $LicenseType}'
-wolframscript -file wolfram/fable_spinor.wls 2>&1 | tee logs/fable_spinor.log
-wolframscript -file wolfram/gpt56_bridge_dynamic.wls 2>&1 | tee logs/gpt56_bridge_dynamic.log
-wolframscript -file wolfram/gpt56_bridge.wls 2>&1 | tee logs/gpt56_bridge.log
+wolframscript -file tests/verify_wolfram_source.wls wolfram/fable_spinor.wls 2>&1 | tee logs/fable_spinor.log
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge_dynamic.wls 2>&1 | tee logs/gpt56_bridge_dynamic.log
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge.wls 2>&1 | tee logs/gpt56_bridge.log
 ```
 
 Expect 30, 17 and 36 assertions respectively, all passing, all closed
-symbolically rather than numerically. If `wolframscript` is missing or
+symbolically rather than numerically. Each log ends with
+`Source verifier messages : 0` followed by a line beginning `SUCCESS:`; the
+verifier exits `1` if an assertion fails or the kernel emits any message at
+all, so a passing exit status is the whole certificate. If `wolframscript` is missing or
 unlicensed, skip this step: nothing in Parts A to C depends on it.
 
 ---

@@ -27,6 +27,7 @@ printf '\n[3/13] Jupyter notebook build and execution\n'
 "$python_executable" -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/gpt5_6_cosmology.ipynb --ExecutePreprocessor.timeout=180 \
   --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto \
   2>&1 | tee logs/verify-notebook-execution.log
 "$python_executable" -m jupyter nbconvert --to html --output-dir build \
   notebooks/gpt5_6_cosmology.ipynb \
@@ -91,12 +92,16 @@ done
 
 printf '\n[7/13] Wolfram source and generated notebook\n'
 "$python_executable" scripts/build_gpt56_notebook.py
-wolframscript -file wolfram/gpt56_bridge.wls \
+# tests/verify_wolfram_source.wls loads a source with $MessageList captured and
+# fails on ANY Wolfram message, which the source's own summary cannot report.
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge.wls \
   2>&1 | tee logs/verify-wolfram-source.log
 wolframscript -file scripts/execute_gpt56_notebook.wls \
   2>&1 | tee logs/verify-wolfram-notebook.log
 grep -q 'Tests succeeded: 36' logs/verify-wolfram-source.log
 grep -q 'Tests failed: 0' logs/verify-wolfram-source.log
+grep -q 'Source verifier messages : 0' logs/verify-wolfram-source.log
+grep -q 'SUCCESS: gpt56_bridge.wls' logs/verify-wolfram-source.log
 grep -q 'Input cells evaluated    : 5' logs/verify-wolfram-notebook.log
 grep -q 'Output cells stored      : 5' logs/verify-wolfram-notebook.log
 grep -q 'Cells with messages      : 0' logs/verify-wolfram-notebook.log
@@ -129,16 +134,20 @@ printf 'Release checksums: %s files passed\n' \
   "$(wc -l < logs/verify-checksums.log)"
 
 printf '\n[9/13] fableSpinor symbolic proofs (Wolfram)\n'
-wolframscript -file wolfram/fable_spinor.wls \
+wolframscript -file tests/verify_wolfram_source.wls wolfram/fable_spinor.wls \
   2>&1 | tee logs/verify-fable-spinor.log
-wolframscript -file wolfram/gpt56_bridge_dynamic.wls \
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge_dynamic.wls \
   2>&1 | tee logs/verify-gpt56-bridge-dynamic.log
 grep -q 'Tests succeeded: 30' logs/verify-fable-spinor.log
 grep -q 'Tests failed: 0' logs/verify-fable-spinor.log
 grep -q 'Pin(4,4) commutant dimension          : 1' logs/verify-fable-spinor.log
 grep -q 'Spin(4,4) commutant dimension         : 2' logs/verify-fable-spinor.log
+grep -q 'Source verifier messages : 0' logs/verify-fable-spinor.log
+grep -q 'SUCCESS: fable_spinor.wls' logs/verify-fable-spinor.log
 grep -q 'Succeeded    : 17' logs/verify-gpt56-bridge-dynamic.log
 grep -q 'Failed       : 0' logs/verify-gpt56-bridge-dynamic.log
+grep -q 'Source verifier messages : 0' logs/verify-gpt56-bridge-dynamic.log
+grep -q 'SUCCESS: gpt56_bridge_dynamic.wls' logs/verify-gpt56-bridge-dynamic.log
 
 printf '\n[10/13] fable_cosmo_rs: pure-Rust SUNDIALS reference integration\n'
 if [[ ! -e vendor/sundials_rs/crates/cvode_rs/Cargo.toml ]]; then
@@ -169,6 +178,7 @@ printf '\n[12/13] fableSpinor notebook, report and deliverables\n'
 "$python_executable" -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/fable_spinor_dark_energy.ipynb --ExecutePreprocessor.timeout=900 \
   --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto \
   2>&1 | tee logs/verify-fable-notebook-execution.log
 "$python_executable" -m jupyter nbconvert --to html --output-dir build \
   notebooks/fable_spinor_dark_energy.ipynb \

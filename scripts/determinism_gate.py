@@ -65,7 +65,8 @@ def regenerate() -> None:
     as scripts/verify_all.sh, so what is compared is exactly what is committed."""
     py = str(PYTHON)
     nbconvert = [py, "-m", "jupyter", "nbconvert", "--to", "notebook", "--execute",
-                 "--inplace", "--ExecutePreprocessor.record_timing=False"]
+                 "--inplace", "--ExecutePreprocessor.record_timing=False",
+                 "--KernelManager.transport_encryption=auto"]
     run([py, "scripts/run_cosmology.py"], "gpt5_6 numerical artifacts")
     run([py, "scripts/build_cosmology_notebook.py"], "gpt5_6 notebook build")
     run(nbconvert + ["--ExecutePreprocessor.timeout=600", "notebooks/gpt5_6_cosmology.ipynb"],

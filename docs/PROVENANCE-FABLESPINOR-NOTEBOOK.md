@@ -88,7 +88,8 @@ cd Pre-Universe_opus-fable
 .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace \
   notebooks/fable_spinor_dark_energy.ipynb \
   --ExecutePreprocessor.timeout=900 \
-  --ExecutePreprocessor.record_timing=False 2>&1 | tee logs/execute_fable_notebook.log
+  --ExecutePreprocessor.record_timing=False \
+  --KernelManager.transport_encryption=auto 2>&1 | tee logs/execute_fable_notebook.log
 echo "exit status: ${PIPESTATUS[0]}"
 ```
 
@@ -96,8 +97,15 @@ Expected output, with no warnings:
 
 ```
 [NbConvertApp] Converting notebook notebooks/fable_spinor_dark_energy.ipynb to notebook
-[NbConvertApp] Writing 231456 bytes to notebooks/fable_spinor_dark_energy.ipynb
+[NbConvertApp] Writing 437618 bytes to notebooks/fable_spinor_dark_energy.ipynb
 ```
+
+The `--KernelManager.transport_encryption=auto` option makes `jupyter_client`
+provision CurveZMQ keys for the kernel it launches, so the five loopback ZeroMQ
+sockets are encrypted. Without it, `ipykernel` 7 prints
+`Kernel is running over TCP without encryption` at every launch; with it the
+execution log is empty of warnings. The option changes only the transport and
+has no effect on any cell output.
 
 Then strip the one piece of interpreter-specific metadata that execution
 stamps into the file, so the notebook is byte-identical whichever CPython ran it:
@@ -107,8 +115,10 @@ cd Pre-Universe_opus-fable
 .venv/bin/python scripts/normalize_notebooks.py 2>&1 | tee logs/normalize_notebooks.log
 ```
 
-After normalization the file is 231443 bytes; that is the size the integrity
-manifest pins.
+After normalization the file is 437605 bytes; that is the size the integrity
+manifest pins. The two figures are embedded at 100 dpi and each carries a
+textual `alt` description, so the exported HTML contains no placeholder
+"No description has been provided for this image" text.
 
 Runtime is under a minute. The notebook contains `assert` statements at every
 checkpoint, so execution **fails loudly** if any tolerance is exceeded; a

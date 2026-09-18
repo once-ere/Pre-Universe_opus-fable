@@ -50,7 +50,7 @@ If that prints a licensing error instead, stop: nothing below can run.
 
 ## 3. The two commands that produce the result
 
-The constant-parameter family (36 assertions, about four minutes):
+The constant-parameter family (36 assertions, about forty seconds):
 
 ```bash
 cd Pre-Universe_opus-fable
@@ -59,7 +59,7 @@ echo "exit status: ${PIPESTATUS[0]}"
 tail -n 5 logs/gpt56_bridge.log
 ```
 
-The bridge **field** (17 assertions, about thirteen seconds):
+The bridge **field** (17 assertions, about seven seconds):
 
 ```bash
 cd Pre-Universe_opus-fable
@@ -69,6 +69,49 @@ echo "exit status: ${PIPESTATUS[0]}"
 
 Exit status `0` means every assertion passed; both scripts call `Exit[1]` if any
 fails.
+
+### 3.1 The stricter form: assertions **and** zero kernel messages
+
+`wolframscript` does not fail when the kernel emits a message (for example a
+`Limit::alimv` or `General::stop`) while every assertion still passes. The
+repository therefore ships a verifier that loads a source with `$MessageList`
+captured and exits non-zero if **any** message was generated. Run it on each
+source in turn:
+
+```bash
+cd Pre-Universe_opus-fable
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge.wls \
+  2>&1 | tee logs/verify-wolfram-source.log
+echo "exit status: ${PIPESTATUS[0]}"
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge_dynamic.wls \
+  2>&1 | tee logs/verify-gpt56-bridge-dynamic.log
+echo "exit status: ${PIPESTATUS[0]}"
+```
+
+Each log ends with a six-line summary; the seconds value is machine-dependent,
+every other value is fixed:
+
+```
+Source verifier file     : gpt56_bridge.wls
+Source verifier seconds  : 40.1
+Source verifier messages : 0
+Source verifier succeeded: 36
+Source verifier failed   : 0
+SUCCESS: gpt56_bridge.wls passed every assertion with no messages.
+```
+
+```
+Source verifier file     : gpt56_bridge_dynamic.wls
+Source verifier seconds  : 7.2
+Source verifier messages : 0
+Source verifier succeeded: 17
+Source verifier failed   : 0
+SUCCESS: gpt56_bridge_dynamic.wls passed every assertion with no messages.
+```
+
+Exit status `0` is the pass certificate; `1` means an assertion failed **or** a
+message was emitted; `2` means the path argument was missing or the file does
+not exist. This is the form `scripts/verify_all.sh` runs in its stages 7 and 9.
 
 ---
 

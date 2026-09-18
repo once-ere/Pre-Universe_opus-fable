@@ -66,15 +66,23 @@ Then, one gate at a time:
 .venv/bin/python scripts/run_fable_cosmology.py                 # three-way cross-check + figures
 .venv/bin/python scripts/run_cosmology.py > /dev/null           # gpt5_6 artifacts
 bash scripts/build_documentation.sh                             # three PDF reports
-wolframscript -file wolfram/fable_spinor.wls                    # 30 assertions
-wolframscript -file wolfram/gpt56_bridge_dynamic.wls            # 17 assertions
-wolframscript -file wolfram/gpt56_bridge.wls                    # 36 assertions
+wolframscript -file tests/verify_wolfram_source.wls wolfram/fable_spinor.wls          # 30 assertions
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge_dynamic.wls  # 17 assertions
+wolframscript -file tests/verify_wolfram_source.wls wolfram/gpt56_bridge.wls          # 36 assertions
 wolframscript -file scripts/execute_gpt56_notebook.wls          # evaluates the .nb IN PLACE
 .venv/bin/python scripts/audit_notebooks.py                     # 3 of 3 notebooks executed
 ```
 
+The Wolfram verifier loads each source with `$MessageList` captured and exits
+non-zero if a single assertion fails **or** a single kernel message is emitted,
+which a plain `wolframscript -file wolfram/<name>.wls` run would let through.
+Every notebook execution passes `--KernelManager.transport_encryption=auto`
+so the loopback kernel sockets are CurveZMQ-encrypted and the execution log
+carries no warnings.
+
 Expected: 45 Python tests and 20 Rust tests pass; the three Wolfram sources
-report 30, 17 and 36 passing assertions with zero failures and no messages; the
+report 30, 17 and 36 passing assertions with zero failures and
+`Source verifier messages : 0`; the
 Mathematica notebook stores 5 output cells for 5 input cells; the reference
 integrator and the cross-check both end in `SUCCESS`; and the documentation
 build publishes the 9-page fableSpinor report, the 11-page gpt5_6 report and
@@ -378,3 +386,16 @@ sha256sum -c artifacts/SHA256SUMS                # every tracked file matches th
 - Agreement among three solvers establishes numerical correctness, not physical
   correctness.
 - No claim is made that a new fundamental particle has been detected.
+
+## Licence
+
+This repository is released under the GNU General Public License, version 3 or
+later; the full text is in [LICENSE](LICENSE), and `fable_cosmo_rs/Cargo.toml`
+declares the same `GPL-3.0-or-later`. This matches the licence of the
+Pre-Universe work it extends.
+
+The pure-Rust SUNDIALS 7.8.0 engine at `vendor/sundials_rs` is a separate
+project pulled in as a git submodule and keeps its own licence: BSD 3-Clause,
+Copyright (c) Lawrence Livermore National Security, University of Maryland
+Baltimore County, and the SUNDIALS contributors. See `vendor/sundials_rs/LICENSE`
+and `vendor/sundials_rs/NOTICE` after cloning with `--recurse-submodules`.
